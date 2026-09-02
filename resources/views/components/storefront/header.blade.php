@@ -460,7 +460,11 @@
                     href="{{ route('home') }}"
                     class="text-2xl font-semibold tracking-tight text-neutral-950"
                 >
-                    {{ config('marketplace.name') }}
+                    <img
+                        src="{{ Storage::url('frontstore/images/logo.png') }}"
+                        alt="{{ config('marketplace.name') }}"
+                        class="h-auto w-[150px] object-contain"
+                    >
                 </a>
 
                 <button

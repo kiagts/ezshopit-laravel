@@ -9,6 +9,10 @@
         <meta name="description" content="@yield('description', 'A modern multi-vendor marketplace platform.')">
         @stack('head')
 
+        <!-- Favicon -->
+        <link rel="icon" href="{{ asset('storage/frontstore/favicon.ico') }}" type="image/x-icon">
+        <link rel="shortcut icon" href="{{ asset('storage/frontstore/favicon.ico') }}" type="image/x-icon">
+        
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="min-h-screen bg-neutral-50 font-sans text-neutral-950 antialiased">
