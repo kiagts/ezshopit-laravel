@@ -35,7 +35,7 @@ class Money
         $divisor = 10 ** $minorUnit;
         $number = number_format($amount / $divisor, $minorUnit);
 
-        return ($currency ?: self::currencyCode()).' '.$number;
+        return ($currency ?: self::currencySymbol()).$number;
     }
 
     public static function input(?int $amount): string
@@ -52,6 +52,11 @@ class Money
     public static function currencyCode(): string
     {
         return (string) config('marketplace.currency.code', 'USD');
+    }
+
+    public static function currencySymbol(): string
+    {
+        return (string) config('marketplace.currency.symbol', '$');
     }
 
     private static function minorUnit(): int

@@ -172,12 +172,10 @@
 
     <x-storefront.hero-section :smallBannerSliders="$smallBannerSliders" />
 
-    @if (!$homepageCategories->isEmpty())
-        <x-storefront.category-section
-            :categories="$homepageCategories"
-            title="Shop by Category"
-        />
-    @endif
+    <x-storefront.category-section
+        :categories="$homepageCategories"
+        title="Shop by Category"
+    />
 
     <x-storefront.promotion-grid
         :main-banner="$mainPromotionBanner"

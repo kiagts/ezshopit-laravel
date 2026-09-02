@@ -15,7 +15,7 @@
 @endphp
 
 @if ($state !== 'in_stock')
-    <span {{ $attributes->class(['inline-flex w-fit items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset', $classes[$state] ?? $classes['out_of_stock']]) }}>
+    <span {{ $attributes->class(['absolute left-3 top-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold', $classes[$state] ?? $classes['out_of_stock']]) }}>
         {{ $labels[$state] ?? $labels['out_of_stock'] }}
     </span>
 @endif
