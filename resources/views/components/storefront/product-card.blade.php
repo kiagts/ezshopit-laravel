@@ -22,7 +22,7 @@
     $guestWishlistUrl = route('login');
 
     $rating = $product->averageRating();
-    $reviewCount = 4; //$product->approvedReviewCount();
+    $reviewCount = $product->approvedReviewCount();
 
     /*
     |--------------------------------------------------------------------------
@@ -33,7 +33,8 @@
     |
     */
 
-    $productBadge = $badge ?? 'bestseller';
+    $productBadge = $badge ?? null;
+    $productBadgeKey = strtolower((string) $productBadge);
 @endphp
 
 <article
@@ -79,26 +80,20 @@
         @if (!empty($productBadge))
 
             @php
-                $badgeClasses = match (strtolower($productBadge)) {
+                $badgeClasses = match ($productBadgeKey) {
                     'new' => 'bg-emerald-50 text-emerald-700',
                     'bestseller' => 'bg-amber-50 text-amber-700',
                     'sale' => 'bg-rose-50 text-rose-700',
                     'low stock' => 'bg-orange-50 text-orange-700',
                     default => 'bg-neutral-100 text-neutral-700',
                 };
-      
-                $labels = [
-                    'new'        => 'New',
-                    'bestseller' => 'Top Seller',
-                    'low stock'  => 'Limited stock',
-                    'sale'       => 'Sale',
-                ];
+
             @endphp
 
             <span
                 class="absolute left-3 top-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $badgeClasses }}"
             >
-                {{ $labels[$productBadge] }}
+                {{ $productBadge }}
             </span>
 
         @endif
