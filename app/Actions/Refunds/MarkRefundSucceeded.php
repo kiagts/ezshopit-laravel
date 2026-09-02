@@ -3,6 +3,7 @@
 namespace App\Actions\Refunds;
 
 use App\Actions\Commissions\ApplyRefundCommissionAdjustments;
+use App\Actions\VendorLedger\PostVendorRefundDebits;
 use App\Enums\RefundStatus;
 use App\Models\Payment;
 use App\Models\Refund;
@@ -14,6 +15,7 @@ class MarkRefundSucceeded
     public function __construct(
         private readonly RecalculatePaymentRefundStatus $recalculatePaymentRefundStatus,
         private readonly ApplyRefundCommissionAdjustments $applyRefundCommissionAdjustments,
+        private readonly PostVendorRefundDebits $postVendorRefundDebits,
     ) {
     }
 
@@ -44,6 +46,16 @@ class MarkRefundSucceeded
 
             return $refund->refresh();
         }, 3);
+
+        try {
+            $this->postVendorRefundDebits->handle($refund);
+        } catch (\Throwable $exception) {
+            Log::error('Vendor ledger refund debit posting failed after refund success.', [
+                'refund_id' => $refund->id,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
 
         try {
             $this->applyRefundCommissionAdjustments->handle($refund);

@@ -22,14 +22,14 @@ class ProductDiscoveryService
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
      */
-    public function discover(array $filters, ?Category $category = null, int $perPage = 24, ?Vendor $vendor = null): array
+    public function discover(array $filters, ?Category $category = null, ?Brand $brand = null, int $perPage = 24, ?Vendor $vendor = null): array
     {
         $filters = $this->normalize($filters, $category);
         $filterCategory = $category ?? $this->selectedFilterCategory($filters, $vendor);
         $filterableAttributes = $this->filterableAttributes($filterCategory);
         $selectedAttributeFilters = $this->selectedAttributeFilters($filters['attributes'], $filterableAttributes);
 
-        $query = $this->baseQuery($category, $filters, $vendor);
+        $query = $this->baseQuery($category, $filters, $brand, $vendor);
         $this->applyFilters($query, $filters, $selectedAttributeFilters);
         $this->applySort($query, $filters['sort'], filled($filters['q']));
 
@@ -124,8 +124,12 @@ class ProductDiscoveryService
     /**
      * @param array<string, mixed> $filters
      */
-    private function baseQuery(?Category $category, array $filters, ?Vendor $vendor = null): Builder
-    {
+    private function baseQuery(
+        ?Category $category,
+        array $filters,
+        ?Brand $brand = null,
+        ?Vendor $vendor = null
+    ): Builder {
         return Product::query()
             ->publiclyVisible()
             ->select('products.*')
@@ -134,22 +138,83 @@ class ProductDiscoveryService
                 'brand:id,name,slug',
                 'primaryImage',
                 'firstGalleryImage',
-                'variants' => fn ($query) => $query->active()->with('inventory')->orderBy('sort_order')->orderBy('sku'),
+                'variants' => fn ($query) => $query
+                    ->active()
+                    ->with('inventory')
+                    ->orderBy('sort_order')
+                    ->orderBy('sku'),
             ])
-            ->when($vendor, fn (Builder $query): Builder => $query->forVendor($vendor))
-            ->when($category, fn (Builder $query): Builder => $query->whereIn('category_id', $this->categoryAndDescendantIds($category)))
-            ->when(filled($filters['q']), fn (Builder $query): Builder => $this->applySearch($query, $filters['q']))
-            ->when($filters['category'] !== [], function (Builder $query) use ($filters): void {
-                $ids = Category::query()
-                    ->whereIn('slug', $filters['category'])
-                    ->get()
-                    ->flatMap(fn (Category $category): Collection => $this->categoryAndDescendantIds($category))
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                $query->whereIn('category_id', $ids);
-            });
+    
+            /*
+            |--------------------------------------------------------------------------
+            | Vendor
+            |--------------------------------------------------------------------------
+            */
+            ->when(
+                $vendor,
+                fn (Builder $query): Builder =>
+                    $query->forVendor($vendor)
+            )
+    
+            /*
+            |--------------------------------------------------------------------------
+            | Brand
+            |--------------------------------------------------------------------------
+            */
+            ->when(
+                $brand,
+                fn (Builder $query): Builder =>
+                    $query->where('brand_id', $brand->id)
+            )
+    
+            /*
+            |--------------------------------------------------------------------------
+            | Category Page
+            |--------------------------------------------------------------------------
+            */
+            ->when(
+                $category,
+                fn (Builder $query): Builder =>
+                    $query->whereIn(
+                        'category_id',
+                        $this->categoryAndDescendantIds($category)
+                    )
+            )
+    
+            /*
+            |--------------------------------------------------------------------------
+            | Search
+            |--------------------------------------------------------------------------
+            */
+            ->when(
+                filled($filters['q']),
+                fn (Builder $query): Builder =>
+                    $this->applySearch($query, $filters['q'])
+            )
+    
+            /*
+            |--------------------------------------------------------------------------
+            | Category Filters
+            |--------------------------------------------------------------------------
+            */
+            ->when(
+                $filters['category'] !== [],
+                function (Builder $query) use ($filters): void {
+    
+                    $ids = Category::query()
+                        ->whereIn('slug', $filters['category'])
+                        ->get()
+                        ->flatMap(
+                            fn (Category $category): Collection =>
+                                $this->categoryAndDescendantIds($category)
+                        )
+                        ->unique()
+                        ->values()
+                        ->all();
+    
+                    $query->whereIn('category_id', $ids);
+                }
+            );
     }
 
     private function applySearch(Builder $query, string $search): Builder

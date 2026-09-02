@@ -3,12 +3,14 @@
 namespace App\Services\Storefront;
 
 use App\Enums\ProductAttributeInputType;
+use App\Enums\ProductReviewStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductSpecification;
 use App\Models\ProductVariant;
 use App\Support\Money;
+use App\Services\Reviews\ProductRatingService;
 use Illuminate\Support\Collection;
 
 class StorefrontProductService
@@ -16,6 +18,7 @@ class StorefrontProductService
     public function __construct(
         private readonly ProductDiscoveryService $discovery,
         private readonly WishlistStateService $wishlistState,
+        private readonly ProductRatingService $ratings,
     ) {}
 
     /**
@@ -59,10 +62,27 @@ class StorefrontProductService
             'variantPayload' => $this->variantPayload($product, $variants),
             'specifications' => $this->specifications($product),
             'relatedProducts' => $relatedProducts,
+            'reviews' => $this->approvedReviews($product),
+            'reviewSort' => request('review_sort', 'newest'),
+            'ratingDistribution' => $this->ratings->distribution($product),
             'isWishlisted' => $this->wishlistState->isWishlisted(auth()->user(), $product),
             'wishlistedProductIds' => $this->wishlistState->idsForProducts(auth()->user(), $relatedProducts),
             'navigationCategories' => $this->navigationCategories(),
         ];
+    }
+
+    private function approvedReviews(Product $product)
+    {
+        $sort = request('review_sort', 'newest');
+
+        return $product->reviews()
+            ->with('user:id,name')
+            ->where('status', ProductReviewStatus::Approved)
+            ->when($sort === 'highest', fn ($query) => $query->orderByDesc('rating')->latest('submitted_at'))
+            ->when($sort === 'lowest', fn ($query) => $query->orderBy('rating')->latest('submitted_at'))
+            ->when(! in_array($sort, ['highest', 'lowest'], true), fn ($query) => $query->latest('submitted_at'))
+            ->paginate(10, ['*'], 'reviews_page')
+            ->withQueryString();
     }
 
     private function initialVariant(Collection $variants): ProductVariant

@@ -52,4 +52,9 @@ class VendorOrderCommission extends Model
     {
         return $this->hasMany(CommissionAdjustment::class);
     }
+
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(VendorLedgerEntry::class);
+    }
 }

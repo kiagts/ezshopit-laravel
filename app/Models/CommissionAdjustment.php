@@ -7,6 +7,7 @@ use Database\Factories\CommissionAdjustmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CommissionAdjustment extends Model
 {
@@ -44,5 +45,10 @@ class CommissionAdjustment extends Model
     public function refundAllocation(): BelongsTo
     {
         return $this->belongsTo(RefundAllocation::class);
+    }
+
+    public function ledgerEntry(): HasOne
+    {
+        return $this->hasOne(VendorLedgerEntry::class);
     }
 }

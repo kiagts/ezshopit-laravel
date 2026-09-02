@@ -5,10 +5,12 @@ use App\Http\Controllers\Account\AddressController;
 use App\Http\Controllers\Account\DashboardController as AccountDashboardController;
 use App\Http\Controllers\Account\OrderController as AccountOrderController;
 use App\Http\Controllers\Account\PaymentController as AccountPaymentController;
+use App\Http\Controllers\Account\ReviewController as AccountReviewController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checkout\CheckoutController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Storefront\CategoryController as StorefrontCategoryController;
+use App\Http\Controllers\Storefront\BrandController as StorefrontBrandController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CartItemController;
 use App\Http\Controllers\Vendor\RegistrationController as VendorRegistrationController;
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/search', SearchController::class)->name('storefront.search');
 Route::get('/category/{category:slug}', StorefrontCategoryController::class)->name('storefront.categories.show');
+Route::get('/brand/{brand:slug}', StorefrontBrandController::class)->name('storefront.brands.show');
 Route::get('/product/{product:slug}', [StorefrontProductController::class, 'show'])->name('storefront.products.show');
 Route::get('/store/{vendor:slug}', StoreController::class)->name('storefront.stores.show');
 
@@ -72,6 +75,11 @@ Route::middleware(['auth', 'role:'.UserRole::Customer->value])->group(function (
     Route::post('/account/orders/{order:order_number}/payment/retry', [AccountPaymentController::class, 'retry'])->name('account.orders.payment.retry');
     Route::get('/account/orders/{order:order_number}/payment/return', [AccountPaymentController::class, 'return'])->name('account.orders.payment.return');
     Route::get('/account/orders/{order:order_number}/payment/status', [AccountPaymentController::class, 'status'])->name('account.orders.payment.status');
+    Route::get('/account/reviews', [AccountReviewController::class, 'index'])->name('account.reviews.index');
+    Route::get('/account/orders/items/{orderItem}/review', [AccountReviewController::class, 'create'])->name('account.order-items.reviews.create');
+    Route::post('/account/orders/items/{orderItem}/review', [AccountReviewController::class, 'store'])->name('account.order-items.reviews.store');
+    Route::get('/account/reviews/{review}/edit', [AccountReviewController::class, 'edit'])->name('account.reviews.edit');
+    Route::put('/account/reviews/{review}', [AccountReviewController::class, 'update'])->name('account.reviews.update');
     Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
     Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
 

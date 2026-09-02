@@ -91,6 +91,11 @@ class VendorOrder extends Model
         return $this->hasOne(VendorOrderCommission::class);
     }
 
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(VendorLedgerEntry::class);
+    }
+
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');

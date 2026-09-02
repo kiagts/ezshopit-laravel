@@ -5,27 +5,33 @@ namespace App\Actions\Commissions;
 use App\Enums\CommissionAdjustmentType;
 use App\Enums\RefundAllocationType;
 use App\Enums\RefundStatus;
+use App\Actions\VendorLedger\PostVendorCommissionRefundCredit;
+use App\Models\CommissionAdjustment;
 use App\Models\RefundAllocation;
 use App\Models\VendorOrderCommission;
 use App\Services\Commissions\CommissionCalculator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ApplyRefundCommissionAdjustment
 {
-    public function __construct(private readonly CommissionCalculator $calculator)
+    public function __construct(
+        private readonly CommissionCalculator $calculator,
+        private readonly PostVendorCommissionRefundCredit $postVendorCommissionRefundCredit,
+    )
     {
     }
 
-    public function handle(RefundAllocation $allocation): void
+    public function handle(RefundAllocation $allocation): ?CommissionAdjustment
     {
-        DB::transaction(function () use ($allocation): void {
+        $adjustment = DB::transaction(function () use ($allocation): ?CommissionAdjustment {
             $allocation = RefundAllocation::query()
                 ->with('refund')
                 ->lockForUpdate()
                 ->findOrFail($allocation->id);
 
             if ($allocation->refund?->status !== RefundStatus::Succeeded || ! $allocation->vendor_order_id) {
-                return;
+                return null;
             }
 
             $commission = VendorOrderCommission::query()
@@ -35,17 +41,17 @@ class ApplyRefundCommissionAdjustment
                 ->first();
 
             if (! $commission || $commission->adjustments()->where('refund_allocation_id', $allocation->id)->exists()) {
-                return;
+                return $allocation->commissionAdjustment()->first();
             }
 
             if ($allocation->refund->processed_at && $commission->recognized_at && $allocation->refund->processed_at->lessThanOrEqualTo($commission->recognized_at)) {
-                return;
+                return null;
             }
 
             $commissionableDelta = $this->commissionableDelta($commission, $allocation);
 
             if ($commissionableDelta === 0) {
-                return;
+                return null;
             }
 
             $commissionDelta = -1 * min(
@@ -53,7 +59,7 @@ class ApplyRefundCommissionAdjustment
                 $this->calculator->netCommissionAmount($commission),
             );
 
-            $commission->adjustments()->create([
+            return $commission->adjustments()->create([
                 'refund_id' => $allocation->refund_id,
                 'refund_allocation_id' => $allocation->id,
                 'type' => CommissionAdjustmentType::Refund,
@@ -62,6 +68,20 @@ class ApplyRefundCommissionAdjustment
                 'reason' => 'Successful seller-attributed refund allocation.',
             ]);
         }, 3);
+
+        if ($adjustment) {
+            try {
+                $this->postVendorCommissionRefundCredit->handle($adjustment);
+            } catch (\Throwable $exception) {
+                Log::error('Vendor ledger commission refund credit posting failed after commission adjustment.', [
+                    'commission_adjustment_id' => $adjustment->id,
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $adjustment;
     }
 
     private function commissionableDelta(VendorOrderCommission $commission, RefundAllocation $allocation): int

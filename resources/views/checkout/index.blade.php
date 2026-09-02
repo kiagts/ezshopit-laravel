@@ -1,4 +1,4 @@
-@extends('layouts.checkout')
+@extends('layouts.app')
 
 @php
     use App\Enums\PaymentMethod;

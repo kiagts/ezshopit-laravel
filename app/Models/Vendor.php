@@ -82,6 +82,21 @@ class Vendor extends Model
         return $this->hasMany(CommissionRule::class);
     }
 
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(VendorLedgerEntry::class);
+    }
+
+    public function payoutMethods(): HasMany
+    {
+        return $this->hasMany(VendorPayoutMethod::class);
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(VendorPayout::class);
+    }
+
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', VendorStatus::Pending);

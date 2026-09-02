@@ -50,7 +50,7 @@ class ProductDetailTest extends TestCase
             ->assertSee('name="product_variant_id"', false)
             ->assertDontSeeText('TAX-SECRET')
             ->assertDontSeeText('REG-SECRET')
-            ->assertDontSeeText('reviews')
+            ->assertSeeText('Verified Product Reviews')
             ->assertDontSeeText('shipping');
     }
 

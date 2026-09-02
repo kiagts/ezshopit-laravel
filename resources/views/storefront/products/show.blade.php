@@ -12,7 +12,6 @@
             'is_variant' => $image->product_variant_id !== null,
         ])
         ->values();
-
     $vendorName = $product->vendor->display_name;
 
     $vendorInitial = str($vendorName)
@@ -60,6 +59,23 @@
             property="og:image"
             content="{{ $product->displayImage()->url() }}"
         >
+    @endif
+
+    @if ($product->approvedReviewCount() > 0)
+        <script type="application/ld+json">
+            {
+                "@@context": "https://schema.org",
+                "@type": "Product",
+                "name": @json($product->name),
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "{{ number_format($product->averageRating(), 1, '.', '') }}",
+                    "reviewCount": "{{ $product->approvedReviewCount() }}",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                }
+            }
+        </script>
     @endif
 
 @endpush
@@ -175,7 +191,7 @@
                             {{-- WISHLIST --}}
                             {{-- ========================================= --}}
 
-                            @guest
+                            @if (auth()->guest())
 
                                 <a
                                     href="{{ route('login', ['redirect' => url()->current()]) }}"
@@ -198,7 +214,7 @@
                                     </svg>
                                 </a>
 
-                            @elseif(auth()->user()?->isCustomer())
+                            @elseif (auth()->user()?->isCustomer())
 
                                 <form
                                     method="POST"
@@ -234,6 +250,10 @@
                                                 d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
                                             />
                                         </svg>
+
+                                        <span class="sr-only">
+                                            {{ $isWishlisted ? 'Saved' : 'Save' }}
+                                        </span>
 
                                     </button>
 
@@ -290,7 +310,7 @@
                                 <p
                                     class="mt-1 text-xs text-neutral-500"
                                 >
-                                    Standard marketplace shipping
+                                    Standard marketplace Shipping
                                 </p>
 
                             </div>
@@ -382,7 +402,8 @@
                                 href="{{ route('storefront.stores.show', $product->vendor) }}"
                                 class="font-medium text-neutral-500 transition hover:text-brand-700"
                             >
-                                {{ $vendorName }}
+                                <span class="sr-only">Sold by {{ $vendorName }}</span>
+                                <span aria-hidden="true">{{ $vendorName }}</span>
                             </a>
 
                             <span
@@ -416,6 +437,13 @@
                         >
                             {{ $product->name }}
                         </h1>
+
+                        @if ($product->approvedReviewCount() > 0)
+                            <a href="#reviews" class="mt-3 inline-flex items-center gap-2 text-sm text-neutral-600 transition hover:text-brand-700">
+                                <x-star-rating :rating="$product->averageRating()" :count="$product->approvedReviewCount()" />
+                                <span>Read reviews</span>
+                            </a>
+                        @endif
 
 
                         {{-- ============================================= --}}
@@ -486,12 +514,7 @@
 
                             <span
                                 class="text-xs text-neutral-500"
-                            >
-                                SKU:
-                                <span data-selected-sku>
-                                    {{ $initialVariant->sku }}
-                                </span>
-                            </span>
+                            >SKU: <span data-selected-sku>{{ $initialVariant->sku }}</span></span>
 
                         </div>
 
@@ -500,7 +523,7 @@
                         {{-- VARIANT OPTIONS --}}
                         {{-- ============================================= --}}
 
-                        @if ($variantOptions->isNotEmpty())
+                        @if ($product->isVariant() && $variantOptions->isNotEmpty())
 
                             <div
                                 class="mt-6 space-y-5"
@@ -930,7 +953,7 @@
                                 <p
                                     class="mt-2 text-sm leading-6 text-neutral-600"
                                 >
-                                    Delivery times and available shipping
+                                    Delivery times and available Shipping
                                     methods are calculated according to your
                                     order and destination.
                                 </p>
@@ -1322,7 +1345,7 @@
                     <p
                         class="mt-2 text-sm text-neutral-500"
                     >
-                        Based on 124 reviews
+                        Based on 124 Reviews
                     </p>
 
 
@@ -1737,6 +1760,82 @@
 
     </x-container>
 </section>
+
+    {{-- ========================================================= --}}
+    {{-- CUSTOMER REVIEWS --}}
+    {{-- ========================================================= --}}
+
+    <section id="reviews" class="bg-neutral-50 py-10 sm:py-12">
+        <x-container>
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <x-badge tone="brand">Customer Reviews</x-badge>
+                    <h2 class="mt-4 text-2xl font-semibold text-neutral-950">Verified Product Reviews</h2>
+                    <p class="mt-2 text-sm text-neutral-600">Only approved reviews from delivered purchases appear here.</p>
+                </div>
+                <form method="GET" action="{{ route('storefront.products.show', $product) }}#reviews">
+                    <select name="review_sort" class="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm" onchange="this.form.submit()">
+                        <option value="newest" @selected($reviewSort === 'newest')>Newest</option>
+                        <option value="highest" @selected($reviewSort === 'highest')>Highest Rating</option>
+                        <option value="lowest" @selected($reviewSort === 'lowest')>Lowest Rating</option>
+                    </select>
+                </form>
+            </div>
+
+            <div class="grid gap-6 lg:grid-cols-[20rem_1fr]">
+                <aside class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    @if ($product->approvedReviewCount() > 0)
+                        <div class="text-center">
+                            <p class="text-4xl font-semibold text-neutral-950">{{ number_format($product->averageRating(), 1) }}</p>
+                            <x-star-rating :rating="$product->averageRating()" class="mt-2 justify-center" />
+                            <p class="mt-2 text-sm text-neutral-500">{{ number_format($product->approvedReviewCount()) }} approved reviews</p>
+                        </div>
+                    @else
+                        <p class="text-sm text-neutral-600">No approved reviews yet.</p>
+                    @endif
+
+                    <div class="mt-6 space-y-3">
+                        @foreach ($ratingDistribution as $stars => $row)
+                            <div class="grid grid-cols-[3.5rem_1fr_3rem] items-center gap-3 text-xs">
+                                <span class="font-medium text-neutral-700">{{ $stars }} stars</span>
+                                <div class="h-2 overflow-hidden rounded-full bg-neutral-100">
+                                    <div class="h-full rounded-full bg-amber-400" style="width: {{ $row['percentage'] }}%"></div>
+                                </div>
+                                <span class="text-right text-neutral-500">{{ $row['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </aside>
+
+                <div class="space-y-4">
+                    @forelse ($reviews as $review)
+                        <article class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <x-star-rating :rating="$review->rating" />
+                                        @if ($review->verified_purchase)
+                                            <x-badge tone="success">Verified Purchase</x-badge>
+                                        @endif
+                                    </div>
+                                    <h3 class="mt-3 text-base font-semibold text-neutral-950">{{ $review->title ?: 'Customer review' }}</h3>
+                                </div>
+                                <p class="text-xs text-neutral-500">{{ $review->reviewer_display_name }} · {{ $review->approved_at?->format('M j, Y') ?? $review->submitted_at->format('M j, Y') }}</p>
+                            </div>
+                            @if ($review->variant_snapshot)
+                                <p class="mt-2 text-xs font-medium text-neutral-500">Purchased: {{ $review->variant_snapshot }}</p>
+                            @endif
+                            <p class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-700">{{ $review->body }}</p>
+                        </article>
+                    @empty
+                        <x-empty-state title="No reviews yet" description="Approved verified-purchase reviews will appear here." />
+                    @endforelse
+
+                    <div>{{ $reviews->links() }}</div>
+                </div>
+            </div>
+        </x-container>
+    </section>
 
     {{-- ========================================================= --}}
     {{-- RELATED PRODUCTS --}}

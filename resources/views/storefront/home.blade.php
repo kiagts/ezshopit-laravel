@@ -45,13 +45,134 @@
         'image' => 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85',
     ];
 
+
+    // $featuredBrands = collect([
+    //     (object) [
+    //         'name' => 'Apple',
+    //         'slug' => 'apple',
+    //         'logo_path' => 'https://cdn.simpleicons.org/apple',
+    //         'description' => 'Innovation, technology and products designed for everyday life.',
+    //         'products_count' => 128,
+    //     ],
+
+    //     (object) [
+    //         'name' => 'Samsung',
+    //         'slug' => 'samsung',
+    //         'logo_path' => 'https://cdn.simpleicons.org/samsung',
+    //         'short_description' => 'Smartphones, electronics and innovative technology for modern living.',
+    //         'products_count' => 96,
+    //     ],
+
+    //     (object) [
+    //         'name' => 'Nike',
+    //         'slug' => 'nike',
+    //         'logo_path' => 'https://cdn.simpleicons.org/nike',
+    //         'short_description' => 'Performance footwear, sportswear and essentials built for movement.',
+    //         'products_count' => 84,
+    //     ],
+
+    //     (object) [
+    //         'name' => 'Adidas',
+    //         'slug' => 'adidas',
+    //         'logo_path' => 'https://cdn.simpleicons.org/adidas',
+    //         'short_description' => 'Sportswear, footwear and lifestyle products made for every day.',
+    //         'products_count' => 72,
+    //     ],
+
+    //     (object) [
+    //         'name' => 'Sony',
+    //         'slug' => 'sony',
+    //         'logo_path' => 'https://cdn.simpleicons.org/sony/000000',
+    //         'short_description' => 'Entertainment, audio, gaming and electronics from a trusted brand.',
+    //         'products_count' => 64,
+    //     ],
+    // ]);
+
+    $smallBannerSliders = [
+
+            // =========================================================
+            // Slider 1 - Electronics
+            // =========================================================
+            [
+                [
+                    'title' => 'Latest Smartphones',
+                    'subtitle' => 'Discover new phones from top brands',
+                    'image' => 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Smart Accessories',
+                    'subtitle' => 'Upgrade your everyday technology',
+                    'image' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Audio Essentials',
+                    'subtitle' => 'Headphones and speakers for every moment',
+                    'image' => 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+            ],
+
+
+
+            // =========================================================
+            // Slider 3 - Home & Living
+            // =========================================================
+            [
+                [
+                    'title' => 'Refresh Your Home',
+                    'subtitle' => 'Beautiful essentials for modern spaces',
+                    'image' => 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Modern Living',
+                    'subtitle' => 'Simple pieces that transform your space',
+                    'image' => 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Kitchen Essentials',
+                    'subtitle' => 'Everything you need for your kitchen',
+                    'image' => 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+            ],
+
+
+            // =========================================================
+            // Slider 4 - Beauty & Lifestyle
+            // =========================================================
+            [
+                [
+                    'title' => 'Beauty Essentials',
+                    'subtitle' => 'Everyday care for your daily routine',
+                    'image' => 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Skincare Favorites',
+                    'subtitle' => 'Care your skin will love',
+                    'image' => 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+                [
+                    'title' => 'Fragrance Collection',
+                    'subtitle' => 'Find a scent made for you',
+                    'image' => 'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=900&q=85',
+                    'url' => route('storefront.search'),
+                ],
+            ],
+        ];
+
 @endphp
 
 @section('content')
 
-    <x-storefront.hero-section :featuredProducts="$featuredProducts" />
+    <x-storefront.hero-section :smallBannerSliders="$smallBannerSliders" />
 
-    @if ($homepageCategories->isNotEmpty())
+    @if (!$homepageCategories->isEmpty())
         <x-storefront.category-section
             :categories="$homepageCategories"
             title="Shop by Category"
@@ -70,7 +191,7 @@
         title="Featured Products"
         description="Handpicked products from trusted sellers"
     />
-
+    <x-storefront.featured-brands :brands="$featuredBrands" />
     @if ($featuredVendors->isNotEmpty())
         <x-storefront.featured-stores
             :vendors="$featuredVendors"

@@ -9,7 +9,9 @@ use App\Models\VendorOrder;
 use App\Models\VendorOrderCommission;
 use App\Services\Commissions\CommissionCalculator;
 use App\Services\Commissions\CommissionRuleResolver;
+use App\Actions\VendorLedger\PostVendorOrderEarnings;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RecognizeVendorOrderCommission
 {
@@ -17,12 +19,13 @@ class RecognizeVendorOrderCommission
         private readonly CanRecognizeCommission $canRecognizeCommission,
         private readonly CommissionRuleResolver $ruleResolver,
         private readonly CommissionCalculator $calculator,
+        private readonly PostVendorOrderEarnings $postVendorOrderEarnings,
     ) {
     }
 
     public function handle(VendorOrder $vendorOrder): ?VendorOrderCommission
     {
-        return DB::transaction(function () use ($vendorOrder): ?VendorOrderCommission {
+        $commission = DB::transaction(function () use ($vendorOrder): ?VendorOrderCommission {
             $vendorOrder = VendorOrder::query()
                 ->with(['order.payment', 'items'])
                 ->lockForUpdate()
@@ -61,6 +64,21 @@ class RecognizeVendorOrderCommission
 
             return $commission->load('adjustments');
         }, 3);
+
+        if ($commission) {
+            try {
+                $this->postVendorOrderEarnings->handle($commission);
+            } catch (\Throwable $exception) {
+                Log::error('Vendor ledger earnings posting failed after commission recognition.', [
+                    'vendor_order_commission_id' => $commission->id,
+                    'vendor_order_id' => $commission->vendor_order_id,
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $commission;
     }
 
     private function preRecognitionRefundedBasis(VendorOrder $vendorOrder, bool $includeShipping): int

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Actions\Commissions\ApplyRefundCommissionAdjustments;
 use App\Actions\Commissions\RecognizeVendorOrderCommission;
+use App\Actions\VendorLedger\PostVendorRefundDebits;
 use App\Enums\CommissionRuleScope;
 use App\Enums\PaymentStatus;
 use App\Enums\RefundAllocationType;
@@ -26,6 +27,7 @@ class CommissionSeeder extends Seeder
         });
 
         $recognize = app(RecognizeVendorOrderCommission::class);
+        $postRefundDebits = app(PostVendorRefundDebits::class);
         $applyRefundAdjustments = app(ApplyRefundCommissionAdjustments::class);
 
         VendorOrder::query()
@@ -51,7 +53,10 @@ class CommissionSeeder extends Seeder
             ->where('status', RefundStatus::Succeeded)
             ->whereHas('order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))
             ->get()
-            ->each(fn (Refund $refund) => $applyRefundAdjustments->handle($refund));
+            ->each(function (Refund $refund) use ($postRefundDebits, $applyRefundAdjustments): void {
+                $postRefundDebits->handle($refund);
+                $applyRefundAdjustments->handle($refund);
+            });
     }
 
     private function rules(): void

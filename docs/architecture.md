@@ -1297,6 +1297,141 @@ Successful seller-attributed refunds after recognition create signed `Commission
 
 Admin reporting lives at `/admin/commissions` and `/admin/commissions/{commission}`. Vendors have a read-only scoped list at `/vendor/commissions`. Customers do not see marketplace commission internals.
 
+## Vendor Ledger And Earnings
+
+Vendor earnings are represented by immutable `VendorLedgerEntry` rows. There is no authoritative `vendors.balance` column. Seller balances are currency-specific sums of ledger entries:
+
+```text
+positive amount = Vendor credit
+negative amount = Vendor debit
+total balance = SUM(vendor_ledger_entries.amount)
+```
+
+The implemented entry types are:
+
+- `sale`: gross seller commercial value for a delivered paid `VendorOrder`; this includes item subtotal and seller shipping.
+- `commission`: marketplace commission debit from the recognized `VendorOrderCommission.original_commission_amount`.
+- `refund`: successful seller-attributed `RefundAllocation` debit for item or shipping refunds.
+- `commission_refund`: positive credit generated only from an actual `CommissionAdjustment`.
+
+Ledger entries are append-only in application behavior. Controllers do not expose create, update, or delete routes for ledger entries. Corrections should be future compensating entries with explicit audit rules, not edits to old rows.
+
+Every entry has a server-generated unique `source_key` for idempotency:
+
+```text
+vendor-order:{id}:sale
+vendor-order-commission:{id}:commission
+refund-allocation:{id}:refund
+commission-adjustment:{id}:commission-refund
+```
+
+`available_at` is authoritative for maturity. No mutable pending/available status is stored. Available balance is the sum of entries with `available_at <= now()`, and pending balance is the sum of entries with a future `available_at`. Negative available balances are allowed because refunds, future chargebacks, or future payouts may reduce funds after earlier money became available.
+
+The default vendor earnings hold is configured by `marketplace.vendor_earnings_hold_days`, backed by `VENDOR_EARNINGS_HOLD_DAYS`, and defaults to 7 days. Sale and commission entries share the same hold date, based on `VendorOrder.delivered_at + hold_days`. Existing ledger rows keep their original `available_at` when the configured hold period changes.
+
+Refund and commission-refund entries become available immediately at the refund's `processed_at` timestamp, or `now()` if no processed timestamp is present. Seller-attributed refunds are posted independently from commission recognition, including refunds that occurred before delivery. This preserves the complete economic history:
+
+```text
+Sale Credit             +10000
+Refund Debit             -2000
+Commission Debit          -800
+```
+
+The ledger posting flow is recoverable:
+
+```text
+VendorOrder delivered
+    -> Commission recognized
+    -> Sale Credit + Commission Debit posted
+
+Refund succeeded
+    -> Refund Debit posted
+    -> CommissionAdjustment created when applicable
+    -> Commission Refund Credit posted
+```
+
+If ledger posting fails after commission or refund truth is saved, the source record remains committed. `php artisan vendor-ledger:reconcile` posts missing sale, commission, refund, and commission-refund entries from authoritative source snapshots using chunked idempotent processing. It does not recalculate commission rules or rewrite history.
+
+Vendor UI exposes read-only balances and ledger activity at `/vendor/earnings`, scoped to the authenticated approved vendor. Admin UI exposes a vendor financial view at `/admin/vendors/{vendor}/financials` and an operational ledger index at `/admin/vendor-ledger`. Customers have no ledger access.
+
+Balances are not combined across currencies. Current demo data is single-currency, but services accept a currency and aggregate one currency at a time. No FX conversion exists.
+
+## Vendor Payouts
+
+Vendor payouts consume available money from the vendor ledger without introducing mutable vendor balance columns. The requestable balance formula is:
+
+```text
+requestable_balance = available_vendor_ledger_balance - active_payout_reservations
+```
+
+Active payout reservation statuses are:
+
+- `pending`
+- `approved`
+- `processing`
+
+Paid, rejected, and cancelled payouts are not active reservations. A paid payout is already represented by its final ledger debit, and rejected/cancelled payouts release their reservation automatically by status without compensating ledger entries.
+
+The payout lifecycle is explicit and action-driven:
+
+```text
+pending -> approved -> processing -> paid
+pending -> rejected
+pending -> cancelled
+approved -> cancelled
+```
+
+There is no arbitrary status update route. Vendors can cancel only pending payouts. Admins approve, reject, start processing, cancel approved payouts before processing, and mark processing payouts paid. Processing payouts cannot be cancelled in this MVP.
+
+`VendorPayout` stores the fixed requested amount, currency, actor IDs, lifecycle timestamps, optional rejection/cancellation reasons, optional external reference, and admin-only internal notes. Payout numbers such as `PAY-YYYYMMDD-XXXXXX` are the operational identifier; database IDs are not used in URLs.
+
+Payout request creation locks the vendor row, recalculates available ledger balance and active reservations, enforces the configured minimum payout (`marketplace.minimum_vendor_payout` / `VENDOR_MINIMUM_PAYOUT`), and creates a pending payout in one transaction. The MVP allows one active payout per vendor per currency.
+
+When a payout is marked paid, the system atomically creates exactly one negative `VendorLedgerEntry` with type `payout` and source key:
+
+```text
+vendor-payout:{id}:payout
+```
+
+The unique ledger `source_key` plus payout/vendor locking makes duplicate paid requests idempotent. Later refund debits may make the vendor's available ledger balance negative after a previously reserved payout is paid; that is valid and future earnings offset it.
+
+Vendor payout methods currently support bank transfer only. Sensitive receiving-account identifiers (`account_number`, `iban`, `routing_number`) use Laravel encrypted casts and are hidden from model serialization. Vendor and admin lists display masked values. Edit forms do not repopulate full sensitive values; blank replacement fields keep the existing encrypted value.
+
+Each payout stores an encrypted immutable destination snapshot at request time. Editing or deleting the live payout method later does not alter historical payout details. Admin payout detail can show the protected snapshot for manual processing inside the admin area; no public API exposes raw bank data.
+
+Payout processing is operational/manual in Prompt 28. There is no Stripe Connect, bank API, PayPal/Wise/local-wallet integration, payout fee, tax withholding, scheduled payout, notification, or accounting export.
+
+`php artisan vendor-payouts:reconcile` repairs missing payout ledger debits for payouts already marked paid and reports duplicate payout debit discrepancies. It does not mark processing payouts paid or otherwise change payout statuses.
+
+## Verified Reviews And Ratings
+
+Product reviews are tied to verified delivered purchases. A customer can review only an `OrderItem` that belongs to their own order and whose `VendorOrder` is delivered. Refunded delivered purchases remain reviewable because a refund does not erase the historical purchase or delivery evidence.
+
+`ProductReview` stores the reviewing user, product, source order item, integer `rating` from 1-5, optional title, body, moderation status, verified-purchase flag, safe reviewer display name, and a variant snapshot. Public reviewer identity is intentionally limited to a generated display name such as first name plus last initial; emails, order numbers, and private customer details are not shown on storefront review lists.
+
+Duplicate prevention is database-backed:
+
+```text
+unique(order_item_id)
+unique(user_id, product_id)
+```
+
+This means one order item can create at most one review, and one customer can leave at most one review per product even after repeat purchases. Repeat purchase review links redirect the customer to edit their existing product review.
+
+Reviews use `App\Enums\ProductReviewStatus`:
+
+- `pending`: customer-submitted or edited review awaiting moderation
+- `approved`: public/published review
+- `rejected`: hidden review with moderation feedback
+
+Customers create and edit only their own reviews. Vendor users receive a read-only, vendor-scoped review list for products they own. Admins moderate reviews through explicit approve/reject actions; there is no vendor moderation route and no arbitrary public status assignment.
+
+Product rating aggregates live on `products.rating_sum` and `products.rating_count`. They include approved reviews only and deliberately avoid storing a rounded float average. `Product::averageRating()` derives the display average from those integer columns. When an approved review is edited or rejected, its old contribution is removed and the review returns to pending. `php artisan reviews:rebuild-ratings` can recalculate all product aggregates from approved reviews.
+
+Public product detail pages show approved reviews only, including the verified purchase badge, safe display name, rating distribution, sorting, pagination, and JSON-LD `AggregateRating` only when at least one approved review exists. Product cards show ratings only from real approved aggregate data; they do not display placeholder or fake ratings.
+
+This module rates products, not sellers or stores. Review media, video reviews, vendor replies, helpful votes, reporting/abuse workflows, AI moderation, notifications, rating-based discovery ranking, and seller/store ratings are deferred.
+
 ## Product Detail
 
 Public product detail pages live at:

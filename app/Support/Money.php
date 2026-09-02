@@ -25,7 +25,7 @@ class Money
         return ((int) $whole * (10 ** $minorUnit)) + (int) $fraction;
     }
 
-    public static function format(?int $amount): string
+    public static function format(?int $amount, ?string $currency = null): string
     {
         if ($amount === null) {
             return '-';
@@ -35,7 +35,7 @@ class Money
         $divisor = 10 ** $minorUnit;
         $number = number_format($amount / $divisor, $minorUnit);
 
-        return self::currencyCode().' '.$number;
+        return ($currency ?: self::currencyCode()).' '.$number;
     }
 
     public static function input(?int $amount): string

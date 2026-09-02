@@ -10,17 +10,19 @@
 
     $href = route('storefront.products.show', $product);
 
-    $image = $product->images?->first();
+    $image = $product->displayImage();
 
-    $price = $product->price ?? $product->activeVariant?->sale_price ?? null;
+    $price = $product->storefrontPrice();
+
+    $stockState = $product->publicStockState();
 
     $canShowWishlist = ! auth()->user()?->isVendor()
         && ! auth()->user()?->isAdmin();
 
     $guestWishlistUrl = route('login');
 
-    $rating = $product->rating ?? null;
-    $reviewCount = $product->review_count ?? null;
+    $rating = $product->averageRating();
+    $reviewCount = $product->approvedReviewCount();
 
     /*
     |--------------------------------------------------------------------------
@@ -56,7 +58,7 @@
                 <img
                     src="{{ Storage::url($image->path) }}"
                     alt="{{ $image->alt_text ?: $product->name }}"
-                    class="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105 sm:p-5"
+                    class="h-full w-full object-contain transition duration-300 group-hover:scale-105 sm:p-5"
                 >
 
             @else
@@ -161,6 +163,10 @@
                         />
                     </svg>
 
+                    <span class="sr-only">
+                        {{ $isWishlisted ? 'Saved' : 'Save' }}
+                    </span>
+
                 </button>
 
             </form>
@@ -195,34 +201,9 @@
 
 
         {{-- Rating --}}
-        @if ($rating)
+        @if ($reviewCount > 0)
 
-            <div class="mt-2 flex items-center gap-1.5">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    class="h-4 w-4 text-amber-400"
-                >
-                    <path
-                        d="M12 2.5l2.91 5.9 6.51.95-4.71 4.59 1.11 6.48L12 17.36l-5.82 3.06 1.11-6.48-4.71-4.59 6.51-.95L12 2.5z"
-                    />
-                </svg>
-
-                <span class="text-xs font-semibold text-neutral-700">
-                    {{ number_format($rating, 1) }}
-                </span>
-
-                @if ($reviewCount)
-
-                    <span class="text-[11px] text-neutral-400">
-                        ({{ number_format($reviewCount) }})
-                    </span>
-
-                @endif
-
-            </div>
+            <x-star-rating :rating="$rating" :count="$reviewCount" class="mt-2" />
 
         @endif
 
@@ -234,15 +215,20 @@
 
             <div class="min-w-0">
                 <x-storefront.price :price="$price" />
+
+                <x-storefront.stock-status
+                    :state="$stockState"
+                    class="mt-2"
+                />
             </div>
 
-            <a
+            {{-- <a
                 href="{{ $href }}"
                 class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800"
                 aria-label="View {{ $product->name }}"
-            >
+            > --}}
 
-                <svg
+                {{-- <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -258,9 +244,9 @@
 
                     <circle cx="9" cy="20" r="1" />
                     <circle cx="17" cy="20" r="1" />
-                </svg>
+                </svg> --}}
 
-            </a>
+            {{-- </a> --}}
 
         </div>
 

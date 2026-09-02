@@ -5,7 +5,7 @@
 
 <section class="bg-white py-6 sm:py-8">
     <x-container>
-        <div class="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-neutral-100 px-6 py-8 sm:px-8 lg:px-10">
+        <div class="overflow-hidden rounded-2xl bg-emerald-50 px-6 py-8 sm:px-8 lg:px-10" >
 
             <div class="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center" >
                 {{-- ===================================================== --}}
@@ -105,58 +105,270 @@
                 {{-- RIGHT --}}
                 {{-- ===================================================== --}}
                 <div class="h-96">
-                    <div class="grid h-full gap-3 sm:grid-cols-[1.08fr_0.92fr]" >
-                        {{-- Main Product --}}
-                        <div class="h-full">
-                            @if ($featuredProducts->isNotEmpty())
-                                @php
-                                    $mainProduct = $featuredProducts->first();
-                                @endphp
-                                <x-storefront.hero-product-card
-                                    :product="$mainProduct"
-                                    :is-wishlisted="in_array(
-                                        $mainProduct->id,
-                                        $wishlistedProductIds ?? [],
-                                        true
-                                    )"
-                                    variant="large"
-                                    badge="Best Seller"
-                                    class="h-full"
-                                />
-                            @else
-                                <div
-                                    class="flex h-full items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center"
-                                >
-                                    <p class="text-sm text-neutral-500">
-                                        Featured product will appear here.
-                                    </p>
-                                </div>
-                            @endif
-                        </div>
 
-                        {{-- Right Two Products --}}
+                    <div class="grid h-full gap-3 sm:grid-cols-[1.08fr_0.92fr]">
+                
+                        {{-- ========================================================= --}}
+                        {{-- LEFT: BIG SLIDER --}}
+                        {{-- ========================================================= --}}
+                        @if (!empty($smallBannerSliders[0]))
+                
+                            @php
+                                $banners = $smallBannerSliders[0];
+                            @endphp
+                
+                            <div
+                                class="relative h-full min-h-[280px] overflow-hidden rounded-xl bg-neutral-100"
+                                data-banner-slider
+                                data-banner-size="large"
+                                data-banner-autoplay="4000"
+                            >
+                
+                                @foreach ($banners as $index => $banner)
+                
+                                    <a
+                                        href="{{ $banner['url'] }}"
+                                        class="absolute inset-0 block transition-opacity duration-700 {{ $index === 0 ? 'opacity-100' : 'pointer-events-none opacity-0' }}"
+                                        data-banner-slide
+                                    >
+                
+                                        <img
+                                            src="{{ $banner['image'] }}"
+                                            alt="{{ $banner['title'] }}"
+                                            class="absolute inset-0 h-full w-full object-cover transition duration-500 hover:scale-105"
+                                        >
+                
+                
+                                        {{-- Overlay --}}
+                                        <div
+                                            class="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-neutral-950/15 to-transparent"
+                                        ></div>
+                
+                
+                                        {{-- Content --}}
+                                        <div
+                                            class="absolute inset-x-0 bottom-0 z-10 p-5 sm:p-6"
+                                        >
+                                            <h3
+                                                class="text-xl font-semibold leading-tight text-white sm:text-2xl"
+                                            >
+                                                {{ $banner['title'] }}
+                                            </h3>
+                
+                                            <p
+                                                class="mt-2 max-w-md text-sm leading-6 text-white/80"
+                                            >
+                                                {{ $banner['subtitle'] }}
+                                            </p>
+                                        </div>
+                
+                                    </a>
+                
+                                @endforeach
+                
+                
+                                {{-- Dots --}}
+                                @if (count($banners) > 1)
+                
+                                    <div
+                                        class="absolute right-4 top-4 z-20 flex items-center gap-1.5"
+                                        data-banner-dots
+                                    >
+                
+                                        @foreach ($banners as $index => $banner)
+                
+                                            <button
+                                                type="button"
+                                                class="h-1.5 rounded-full transition-all duration-300 {{ $index === 0 ? 'w-6 bg-white' : 'w-2 bg-white/50' }}"
+                                                data-banner-dot="{{ $index }}"
+                                                aria-label="Go to slide {{ $index + 1 }}"
+                                            ></button>
+                
+                                        @endforeach
+                
+                                    </div>
+                
+                                @endif
+                
+                            </div>
+                
+                        @endif
+                
+                
+                        {{-- ========================================================= --}}
+                        {{-- RIGHT: TWO SMALL SLIDERS --}}
+                        {{-- ========================================================= --}}
                         <div class="grid h-full min-h-0 grid-rows-2 gap-3">
-                            @forelse ($featuredProducts->skip(1)->take(2) as $product)
-                                <div class="min-h-0 overflow-hidden">
-                                    <x-storefront.hero-product-card
-                                        :product="$product"
-                                        :is-wishlisted="in_array(
-                                            $product->id,
-                                            $wishlistedProductIds ?? [],
-                                            true
-                                        )"
-                                        variant="small"
-                                        class="h-full"
-                                    />
+                
+                            {{-- Top Right Slider --}}
+                            @if (!empty($smallBannerSliders[1]))
+                
+                                @php
+                                    $banners = $smallBannerSliders[1];
+                                @endphp
+                
+                                <div
+                                    class="relative min-h-0 overflow-hidden rounded-xl bg-neutral-100"
+                                    data-banner-slider
+                                    data-banner-size="small"
+                                    data-banner-autoplay="4700"
+                                >
+                
+                                    @foreach ($banners as $index => $banner)
+                
+                                        <a
+                                            href="{{ $banner['url'] }}"
+                                            class="absolute inset-0 block transition-opacity duration-700 {{ $index === 0 ? 'opacity-100' : 'pointer-events-none opacity-0' }}"
+                                            data-banner-slide
+                                        >
+                
+                                            <img
+                                                src="{{ $banner['image'] }}"
+                                                alt="{{ $banner['title'] }}"
+                                                class="absolute inset-0 h-full w-full object-cover transition duration-500 hover:scale-105"
+                                            >
+                
+                
+                                            <div
+                                                class="absolute inset-0 bg-gradient-to-t from-neutral-950/75 via-neutral-950/10 to-transparent"
+                                            ></div>
+                
+                
+                                            <div
+                                                class="absolute inset-x-0 bottom-0 z-10 p-4"
+                                            >
+                                                <h3
+                                                    class="text-sm font-semibold leading-5 text-white sm:text-base"
+                                                >
+                                                    {{ $banner['title'] }}
+                                                </h3>
+                
+                                                <p
+                                                    class="mt-1 line-clamp-1 text-xs text-white/75"
+                                                >
+                                                    {{ $banner['subtitle'] }}
+                                                </p>
+                                            </div>
+                
+                                        </a>
+                
+                                    @endforeach
+                
+                
+                                    @if (count($banners) > 1)
+                
+                                        <div
+                                            class="absolute right-3 top-3 z-20 flex items-center gap-1.5"
+                                            data-banner-dots
+                                        >
+                
+                                            @foreach ($banners as $index => $banner)
+                
+                                                <button
+                                                    type="button"
+                                                    class="h-1.5 rounded-full transition-all duration-300 {{ $index === 0 ? 'w-5 bg-white' : 'w-2 bg-white/50' }}"
+                                                    data-banner-dot="{{ $index }}"
+                                                    aria-label="Go to slide {{ $index + 1 }}"
+                                                ></button>
+                
+                                            @endforeach
+                
+                                        </div>
+                
+                                    @endif
+                
                                 </div>
-                            @empty
-                                <div class="rounded-xl border border-dashed border-neutral-300 bg-white"></div>
-                                <div class="rounded-xl border border-dashed border-neutral-300 bg-white"></div>
-
-                            @endforelse
+                
+                            @endif
+                
+                
+                            {{-- Bottom Right Slider --}}
+                            @if (!empty($smallBannerSliders[2]))
+                
+                                @php
+                                    $banners = $smallBannerSliders[2];
+                                @endphp
+                
+                                <div
+                                    class="relative min-h-0 overflow-hidden rounded-xl bg-neutral-100"
+                                    data-banner-slider
+                                    data-banner-size="small"
+                                    data-banner-autoplay="5400"
+                                >
+                
+                                    @foreach ($banners as $index => $banner)
+                
+                                        <a
+                                            href="{{ $banner['url'] }}"
+                                            class="absolute inset-0 block transition-opacity duration-700 {{ $index === 0 ? 'opacity-100' : 'pointer-events-none opacity-0' }}"
+                                            data-banner-slide
+                                        >
+                
+                                            <img
+                                                src="{{ $banner['image'] }}"
+                                                alt="{{ $banner['title'] }}"
+                                                class="absolute inset-0 h-full w-full object-cover transition duration-500 hover:scale-105"
+                                            >
+                
+                
+                                            <div
+                                                class="absolute inset-0 bg-gradient-to-t from-neutral-950/75 via-neutral-950/10 to-transparent"
+                                            ></div>
+                
+                
+                                            <div
+                                                class="absolute inset-x-0 bottom-0 z-10 p-4"
+                                            >
+                                                <h3
+                                                    class="text-sm font-semibold leading-5 text-white sm:text-base"
+                                                >
+                                                    {{ $banner['title'] }}
+                                                </h3>
+                
+                                                <p
+                                                    class="mt-1 line-clamp-1 text-xs text-white/75"
+                                                >
+                                                    {{ $banner['subtitle'] }}
+                                                </p>
+                                            </div>
+                
+                                        </a>
+                
+                                    @endforeach
+                
+                
+                                    @if (count($banners) > 1)
+                
+                                        <div
+                                            class="absolute right-3 top-3 z-20 flex items-center gap-1.5"
+                                            data-banner-dots
+                                        >
+                
+                                            @foreach ($banners as $index => $banner)
+                
+                                                <button
+                                                    type="button"
+                                                    class="h-1.5 rounded-full transition-all duration-300 {{ $index === 0 ? 'w-5 bg-white' : 'w-2 bg-white/50' }}"
+                                                    data-banner-dot="{{ $index }}"
+                                                    aria-label="Go to slide {{ $index + 1 }}"
+                                                ></button>
+                
+                                            @endforeach
+                
+                                        </div>
+                
+                                    @endif
+                
+                                </div>
+                
+                            @endif
+                
                         </div>
+                
                     </div>
+                
                 </div>
+
             </div>
         </div>
     </x-container>

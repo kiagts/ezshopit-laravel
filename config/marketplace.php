@@ -35,4 +35,7 @@ return [
             'AE' => 'United Arab Emirates',
         ],
     ],
+
+    'vendor_earnings_hold_days' => (int) env('VENDOR_EARNINGS_HOLD_DAYS', 7),
+    'minimum_vendor_payout' => (int) env('VENDOR_MINIMUM_PAYOUT', 5000),
 ];

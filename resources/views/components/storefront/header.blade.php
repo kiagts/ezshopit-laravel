@@ -45,7 +45,10 @@
                     href="{{ route('home') }}"
                     class="text-lg font-semibold tracking-normal text-neutral-950"
                 >
-                    {{ config('marketplace.name') }}
+                    <img 
+                        src="{{ Storage::url('/frontstore/images/logo.png') }}"
+                        alt="{{ config('marketplace.name') }}"
+                    >
                 </a>
             </div>
 
@@ -170,9 +173,7 @@
                             @if (($wishlistCount ?? 0) > 0)
                                 <span
                                     class="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-950 px-1 text-[9px] font-semibold leading-none text-white"
-                                >
-                                    {{ $wishlistCount }}
-                                </span>
+                                >{{ $wishlistCount }}</span>
                             @endif
                         </div>
 
@@ -222,9 +223,7 @@
                             @if (($cartCount ?? 0) > 0)
                                 <span
                                     class="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-950 px-1 text-[9px] font-semibold leading-none text-white"
-                                >
-                                    {{ $cartCount }}
-                                </span>
+                                >{{ $cartCount }}</span>
                             @endif
                         </div>
 

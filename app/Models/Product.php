@@ -47,6 +47,8 @@ class Product extends Model
             'status' => ProductStatus::class,
             'approval_status' => ProductApprovalStatus::class,
             'is_featured' => 'boolean',
+            'rating_sum' => 'integer',
+            'rating_count' => 'integer',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -92,6 +94,11 @@ class Product extends Model
     public function wishlistItems(): HasMany
     {
         return $this->hasMany(WishlistItem::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
     }
 
     public function orderItems(): HasMany
@@ -219,5 +226,19 @@ class Product extends Model
         }
 
         return 'in_stock';
+    }
+
+    public function averageRating(): ?float
+    {
+        if ($this->rating_count <= 0) {
+            return null;
+        }
+
+        return round($this->rating_sum / $this->rating_count, 1);
+    }
+
+    public function approvedReviewCount(): int
+    {
+        return (int) $this->rating_count;
     }
 }

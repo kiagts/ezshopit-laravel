@@ -58,6 +58,6 @@ class ProductImage extends Model
 
     public function url(): string
     {
-        return Storage::disk(config('marketplace.product_media.disk', 'public'))->url($this->path);
+        return Storage::url($this->path);
     }
 }

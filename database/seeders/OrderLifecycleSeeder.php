@@ -24,11 +24,13 @@ use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Models\Refund;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorLedgerEntry;
 use App\Models\VendorOrder;
 use App\Models\VendorOrderCommission;
 use Illuminate\Database\Seeder;
@@ -84,6 +86,10 @@ class OrderLifecycleSeeder extends Seeder
             ->whereIn('reference_id', $vendorOrderIds)
             ->delete();
 
+        VendorLedgerEntry::query()
+            ->whereIn('vendor_order_id', $vendorOrderIds)
+            ->delete();
+
         $commissionIds = VendorOrderCommission::query()
             ->whereIn('vendor_order_id', $vendorOrderIds)
             ->pluck('id');
@@ -95,6 +101,10 @@ class OrderLifecycleSeeder extends Seeder
         VendorOrderCommission::query()
             ->whereIn('id', $commissionIds)
             ->delete();
+
+        ProductReview::query()
+            ->whereHas('orderItem.vendorOrder.order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))
+            ->forceDelete();
 
         Refund::query()
             ->whereHas('order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))

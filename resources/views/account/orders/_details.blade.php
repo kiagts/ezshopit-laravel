@@ -74,6 +74,21 @@
                             @if ($itemRefunded > 0)
                                 <p class="sm:col-span-2 text-xs font-medium text-emerald-700">Refunded from this item: {{ Money::format($itemRefunded) }}</p>
                             @endif
+                            @if (! $adminView && $vendorOrder->status === VendorOrderStatus::Delivered && $item->product_id)
+                                @php
+                                    $existingReview = $item->review
+                                        ?: $item->product?->reviews?->firstWhere('user_id', auth()->id());
+                                @endphp
+                                <div class="sm:col-span-2">
+                                    <x-button
+                                        :href="$existingReview ? route('account.reviews.edit', $existingReview) : route('account.order-items.reviews.create', $item)"
+                                        variant="secondary"
+                                        size="sm"
+                                    >
+                                        {{ $existingReview ? 'Edit Your Review' : 'Write a Review' }}
+                                    </x-button>
+                                </div>
+                            @endif
                         </article>
                     @endforeach
                 </div>

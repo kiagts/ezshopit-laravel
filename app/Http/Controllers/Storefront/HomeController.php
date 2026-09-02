@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Brand;
 use App\Models\Vendor;
 use App\Services\Storefront\WishlistStateService;
 use Illuminate\View\View;
@@ -20,6 +21,12 @@ class HomeController extends Controller
             ->ordered()
             ->limit(8)
             ->get();
+
+        $brands = Brand::query()
+                    ->active()
+                    ->ordered()
+                    ->limit(5)
+                    ->get();
 
         $featuredProducts = $this->products()
             ->orderByDesc('is_featured')
@@ -51,6 +58,7 @@ class HomeController extends Controller
             'newArrivals' => $newArrivals,
             'featuredVendors' => $featuredVendors,
             'wishlistedProductIds' => $wishlistedProductIds,
+            'featuredBrands' => $brands
         ]);
     }
 

@@ -59,4 +59,9 @@ class OrderItem extends Model
     {
         return $this->hasMany(RefundAllocation::class);
     }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(ProductReview::class);
+    }
 }

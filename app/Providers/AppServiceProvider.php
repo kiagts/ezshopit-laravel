@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\VendorOrder;
 use App\Policies\ProductPolicy;
+use App\Policies\ProductReviewPolicy;
 use App\Policies\VendorOrderPolicy;
 use App\Services\Cart\CartResolver;
 use App\Services\Cart\EvaluateCart;
@@ -36,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
         */
 
         Gate::policy(Product::class, ProductPolicy::class);
+
+        Gate::policy(ProductReview::class, ProductReviewPolicy::class);
 
         Gate::policy(VendorOrder::class, VendorOrderPolicy::class);
 
@@ -68,10 +72,12 @@ class AppServiceProvider extends ServiceProvider
 
             $categories = Category::query()
                 ->whereNull('parent_id')
+                ->active()
                 ->with([
-                    'activeChildren',
+                    'activeChildren' => fn ($query) => $query->ordered()->limit(6),
                 ])
                 ->orderBy('sort_order')
+                ->orderBy('name')
                 ->get();
 
 

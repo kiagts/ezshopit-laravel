@@ -75,6 +75,8 @@ class DatabaseSeeder extends Seeder
         $this->call(InventorySeeder::class);
         $this->call(OrderLifecycleSeeder::class);
         $this->call(CommissionSeeder::class);
+        $this->call(VendorPayoutSeeder::class);
+        $this->call(ProductReviewSeeder::class);
         $this->call(WishlistSeeder::class);
         $this->call(CartSeeder::class);
     }

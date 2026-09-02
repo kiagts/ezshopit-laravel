@@ -4,12 +4,16 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Vendor\ApplicationStatusController;
 use App\Http\Controllers\Vendor\CommissionController;
 use App\Http\Controllers\Vendor\DashboardController;
+use App\Http\Controllers\Vendor\EarningsController;
 use App\Http\Controllers\Vendor\InventoryController;
 use App\Http\Controllers\Vendor\OnboardingController;
 use App\Http\Controllers\Vendor\OrderController as VendorOrderController;
+use App\Http\Controllers\Vendor\PayoutController;
+use App\Http\Controllers\Vendor\PayoutMethodController;
 use App\Http\Controllers\Vendor\Products\CategoryConfigurationController;
 use App\Http\Controllers\Vendor\Products\ProductController;
 use App\Http\Controllers\Vendor\Products\ProductImageController;
+use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\ShippingMethodController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +25,9 @@ Route::middleware(['web', 'auth', 'role:'.UserRole::Vendor->value])
         Route::patch('/onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
         Route::post('/onboarding/submit', [OnboardingController::class, 'submit'])->name('onboarding.submit');
         Route::get('/application-status', ApplicationStatusController::class)->name('application-status');
+        Route::get('/payouts', [PayoutController::class, 'index'])->name('payouts.index');
+        Route::get('/payouts/{payout:payout_number}', [PayoutController::class, 'show'])->name('payouts.show');
+        Route::post('/payouts/{payout:payout_number}/cancel', [PayoutController::class, 'cancel'])->name('payouts.cancel');
 
         Route::get('/', DashboardController::class)
             ->middleware('vendor.approved')
@@ -32,6 +39,13 @@ Route::middleware(['web', 'auth', 'role:'.UserRole::Vendor->value])
 
             Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
             Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
+            Route::get('/earnings', EarningsController::class)->name('earnings.index');
+            Route::get('/reviews', ReviewController::class)->name('reviews.index');
+            Route::post('/payouts', [PayoutController::class, 'store'])->name('payouts.store');
+            Route::post('/payout-methods/{payoutMethod}/default', [PayoutMethodController::class, 'default'])->name('payout-methods.default');
+            Route::resource('payout-methods', PayoutMethodController::class)
+                ->parameters(['payout-methods' => 'payoutMethod'])
+                ->except('show');
             Route::get('/orders', [VendorOrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{vendorOrder:vendor_order_number}', [VendorOrderController::class, 'show'])->name('orders.show');
             Route::post('/orders/{vendorOrder:vendor_order_number}/confirm', [VendorOrderController::class, 'confirm'])->name('orders.confirm');

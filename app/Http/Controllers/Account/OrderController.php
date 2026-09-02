@@ -31,7 +31,7 @@ class OrderController extends Controller
     public function show(Request $request, Order $order, CanRetryCardPayment $canRetryPayment, CanCancelOrder $canCancelOrder, RefundFinancials $refundFinancials): View
     {
         $this->authorizeOwned($request, $order);
-        $order->load(['payment.refunds', 'vendorOrders.vendor', 'vendorOrders.items.reservation']);
+        $order->load(['payment.refunds', 'vendorOrders.vendor', 'vendorOrders.items.reservation', 'vendorOrders.items.review', 'vendorOrders.items.product.reviews']);
 
         return view('account.orders.show', [
             'order' => $order,
@@ -44,7 +44,7 @@ class OrderController extends Controller
     public function success(Request $request, Order $order, CanRetryCardPayment $canRetryPayment, CanCancelOrder $canCancelOrder, RefundFinancials $refundFinancials): View
     {
         $this->authorizeOwned($request, $order);
-        $order->load(['payment.refunds', 'vendorOrders.vendor', 'vendorOrders.items.reservation']);
+        $order->load(['payment.refunds', 'vendorOrders.vendor', 'vendorOrders.items.reservation', 'vendorOrders.items.review', 'vendorOrders.items.product.reviews']);
 
         return view('account.orders.success', [
             'order' => $order,

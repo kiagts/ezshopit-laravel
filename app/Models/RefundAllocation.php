@@ -50,4 +50,9 @@ class RefundAllocation extends Model
     {
         return $this->hasOne(CommissionAdjustment::class);
     }
+
+    public function ledgerEntry(): HasOne
+    {
+        return $this->hasOne(VendorLedgerEntry::class);
+    }
 }

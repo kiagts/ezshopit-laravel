@@ -1,8 +1,12 @@
 <footer class="border-t border-neutral-200 bg-white">
     <x-container class="grid gap-8 py-10 text-sm text-neutral-600 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div>
-            <p class="text-base font-semibold text-neutral-950">{{ config('marketplace.name') }}</p>
-            <p class="mt-3 max-w-sm leading-6">A multi-vendor marketplace foundation built around verified sellers, clear catalog data, and role-aware account areas.</p>
+            <img
+                src="{{ Storage::url('/frontstore/images/logo.png') }}"
+                alt="{{ config('marketplace.name') }}"
+                class="h-auto w-[150px] object-contain"
+            >
+            <p class="mt-3 max-w-sm leading-6">A multi-vendor marketplac built around verified sellers, clear catalog data, and role-aware account areas.</p>
         </div>
         <div>
             <p class="font-semibold text-neutral-950">Marketplace</p>
@@ -32,6 +36,6 @@
         </div>
     </x-container>
     <x-container class="border-t border-neutral-100 py-5 text-sm text-neutral-500">
-        <p>&copy; {{ now()->year }} {{ config('marketplace.name') }}. Marketplace storefront foundation.</p>
+        <p>&copy; {{ now()->year }} {{ config('marketplace.name') }}. Marketplace storefront.</p>
     </x-container>
 </footer>

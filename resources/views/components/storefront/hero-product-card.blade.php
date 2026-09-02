@@ -10,9 +10,11 @@
 
     $href = route('storefront.products.show', $product);
 
-    $image = $product->images?->first();
+    $image = $product->displayImage();
 
-    $price = $product->price ?? $product->activeVariant?->price ?? null;
+    $price = $product->storefrontPrice();
+
+    $stockState = $product->publicStockState();
 
     $canShowWishlist = ! auth()->user()?->isVendor()
         && ! auth()->user()?->isAdmin();
@@ -140,6 +142,10 @@
                         />
                     </svg>
 
+                    <span class="sr-only">
+                        {{ $isWishlisted ? 'Saved' : 'Save' }}
+                    </span>
+
                 </button>
 
             </form>
@@ -182,6 +188,11 @@
 
             <div class="min-w-0 text-xs">
                 <x-storefront.price :price="$price" />
+
+                <x-storefront.stock-status
+                    :state="$stockState"
+                    class="mt-2"
+                />
             </div>
 
 

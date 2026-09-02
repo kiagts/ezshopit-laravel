@@ -631,9 +631,14 @@ class PaymentFoundationTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(16, Payment::query()->count());
+        $this->assertSame(19, Payment::query()->count());
         $this->assertSame(0, PaymentAttempt::query()->count());
         $this->assertSame(7, Payment::query()->where('method', PaymentMethod::CashOnDelivery)->where('status', PaymentStatus::Pending)->count());
+        $this->assertSame(3, Payment::query()
+            ->whereHas('order', fn ($query) => $query->where('order_number', 'like', 'DEMO-REVIEW-%'))
+            ->where('method', PaymentMethod::CashOnDelivery)
+            ->where('status', PaymentStatus::Paid)
+            ->count());
         $this->assertSame(1, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::Pending)->whereNotNull('expires_at')->count());
         $this->assertSame(2, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::Cancelled)->whereNotNull('expires_at')->count());
         $this->assertSame(2, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::Paid)->count());

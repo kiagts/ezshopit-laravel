@@ -18,6 +18,7 @@
         </div>
 
         <div class="flex flex-wrap gap-3">
+            <x-button :href="route('admin.vendors.financials', $vendor)" variant="secondary">View Financials</x-button>
             @if ($vendor->status === \App\Enums\VendorStatus::Pending)
                 <form method="POST" action="{{ route('admin.vendors.approve', $vendor) }}">
                     @csrf
