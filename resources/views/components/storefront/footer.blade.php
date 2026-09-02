@@ -2,7 +2,7 @@
     <x-container class="grid gap-8 py-10 text-sm text-neutral-600 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div>
             <img
-                src="{{ Storage::url('/frontstore/images/logo.png') }}"
+                src="{{ Storage::url('frontstore/images/logo.png') }}"
                 alt="{{ config('marketplace.name') }}"
                 class="h-auto w-[150px] object-contain"
             >

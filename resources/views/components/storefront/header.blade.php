@@ -46,7 +46,7 @@
                     class="text-lg font-semibold tracking-normal text-neutral-950"
                 >
                     <img 
-                        src="{{ Storage::url('/frontstore/images/logo.png') }}"
+                        src="{{ Storage::url('frontstore/images/logo.png') }}"
                         alt="{{ config('marketplace.name') }}"
                     >
                 </a>
