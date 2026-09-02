@@ -22,7 +22,7 @@
     $guestWishlistUrl = route('login');
 
     $rating = $product->averageRating();
-    $reviewCount = $product->approvedReviewCount();
+    $reviewCount = 4; //$product->approvedReviewCount();
 
     /*
     |--------------------------------------------------------------------------
@@ -33,7 +33,7 @@
     |
     */
 
-    $productBadge = $badge ?? null;
+    $productBadge = $badge ?? 'bestseller';
 @endphp
 
 <article
@@ -86,12 +86,19 @@
                     'low stock' => 'bg-orange-50 text-orange-700',
                     default => 'bg-neutral-100 text-neutral-700',
                 };
+      
+                $labels = [
+                    'new'        => 'New',
+                    'bestseller' => 'Top Seller',
+                    'low stock'  => 'Limited stock',
+                    'sale'       => 'Sale',
+                ];
             @endphp
 
             <span
                 class="absolute left-3 top-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $badgeClasses }}"
             >
-                {{ $productBadge }}
+                {{ $labels[$productBadge] }}
             </span>
 
         @endif
@@ -194,7 +201,7 @@
         {{-- Product Name --}}
         <a
             href="{{ $href }}"
-            class="mt-1 line-clamp-2 min-h-[40px] text-sm font-semibold leading-5 text-neutral-900 transition hover:text-brand-700"
+            class="mt-1 line-clamp-2 mb-3 text-sm font-semibold leading-5 text-neutral-900 transition hover:text-brand-700"
         >
             {{ $product->name }}
         </a>
@@ -203,7 +210,7 @@
         {{-- Rating --}}
         @if ($reviewCount > 0)
 
-            <x-star-rating :rating="$rating" :count="$reviewCount" class="mt-2" />
+            <x-star-rating :rating="$rating" :count="$reviewCount" class="mb-3" />
 
         @endif
 
@@ -211,15 +218,19 @@
         {{-- ===================================================== --}}
         {{-- PRICE / ACTION --}}
         {{-- ===================================================== --}}
-        <div class="mt-auto flex items-end justify-between gap-3 pt-4">
+        <div class="mt-auto flex items-end justify-between gap-3 pt-2">
 
-            <div class="min-w-0">
-                <x-storefront.price :price="$price" />
-
-                <x-storefront.stock-status
-                    :state="$stockState"
-                    class="mt-2"
-                />
+            <div class="flex min-w-0 items-end justify-between gap-4">
+                {{-- Price --}}
+                <div class="min-w-0">
+                    <x-storefront.price :price="$price" />
+                </div>
+                {{-- Stock Status --}}
+                <div class="shrink-0">
+                    <x-storefront.stock-status
+                        :state="$stockState"
+                    />
+                </div>
             </div>
 
             {{-- <a

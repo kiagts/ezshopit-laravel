@@ -9,19 +9,32 @@
 @endphp
 
 @if ($effective)
-    <div {{ $attributes->class('flex flex-wrap items-baseline gap-x-2 gap-y-1') }}>
-        <span class="text-base font-semibold text-neutral-950">
-            @if ($price['from'] ?? false)
-                From
-            @endif
+    <div {{ $attributes->class('flex flex-col items-start') }}>
+        {{-- Starting At --}}
+        @if ($price['from'] ?? false)
+            <span class="mb-0.5 text-xs font-medium leading-none text-neutral-500">
+                Starting at
+            </span>
+        @endif
+        {{-- Current Price --}}
+        <span class="text-[22px] font-bold leading-tight tracking-tight text-neutral-950">
             {{ Money::format($effective) }}
         </span>
-
+        {{-- Previous Price + Discount --}}
         @if ($sale && $base && $sale < $base)
-            <span class="text-sm text-neutral-400 line-through">{{ Money::format($base) }}</span>
-            @if ($price['discount'] ?? null)
-                <span class="rounded-sm bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">{{ $price['discount'] }}% off</span>
-            @endif
+            <div class="mt-1 flex items-center gap-2">
+                {{-- Previous Price --}}
+                <span class="text-sm font-medium text-neutral-500 line-through">
+                    {{ Money::format($base) }}
+                </span>
+
+                {{-- Discount Percentage --}}
+                @if ($price['discount'] ?? null)
+                    <span class="rounded-sm bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">
+                        {{ $price['discount'] }}% off
+                    </span>
+                @endif
+            </div>
         @endif
     </div>
 @else
