@@ -5,10 +5,13 @@ namespace App\Actions\Vendors;
 use App\Enums\VendorStatus;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Services\Notifications\MarketplaceNotifier;
 use Illuminate\Validation\ValidationException;
 
 class ApproveVendor
 {
+    public function __construct(private readonly MarketplaceNotifier $notifier) {}
+
     public function handle(Vendor $vendor, User $admin): Vendor
     {
         if ($vendor->status !== VendorStatus::Pending) {
@@ -25,6 +28,8 @@ class ApproveVendor
             'rejected_at' => null,
             'rejected_by' => null,
         ])->save();
+
+        $this->notifier->vendorStatusChanged($vendor, 'approved');
 
         return $vendor;
     }

@@ -17,7 +17,7 @@
     |--------------------------------------------------------------------------
     */
 
-    $rating = $vendor->rating ?? 4.8;
+    $rating = $vendor->rating ?? null;
 
     $reviewCount = $vendor->review_count ?? 0;
 
@@ -43,7 +43,7 @@
     {{-- ========================================================= --}}
     {{-- STORE INFORMATION --}}
     {{-- ========================================================= --}}
-    <div class="relative z-20 flex items-start gap-3">
+    <div class="pointer-events-none relative z-20 flex items-start gap-3">
 
         {{-- Store Logo --}}
         <div
@@ -79,6 +79,7 @@
 
 
             {{-- Rating --}}
+            @if ($rating !== null)
             <div class="mt-2 flex items-center gap-1.5">
 
                 <svg
@@ -107,6 +108,8 @@
             </div>
 
 
+            @endif
+
             {{-- Product Count --}}
             <p class="mt-2 text-xs text-neutral-500">
                 {{ number_format($productCount) }}
@@ -123,7 +126,7 @@
     {{-- ========================================================= --}}
     @if ($href)
 
-        <div class="relative z-20 mt-auto pt-5">
+        <div class="pointer-events-none relative z-20 mt-auto pt-5">
 
             <span
                 class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 transition group-hover:gap-3 group-hover:text-emerald-800"

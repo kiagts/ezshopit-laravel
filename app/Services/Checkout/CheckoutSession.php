@@ -14,6 +14,7 @@ class CheckoutSession
     public const PAYMENT_METHOD_KEY = 'checkout.payment_method';
     public const IDEMPOTENCY_KEY = 'checkout.idempotency_key';
     public const SIGNATURE_KEY = 'checkout.signature';
+    public const GIFT_CARD_KEY = 'checkout.gift_card';
 
     public function selectedAddress(Request $request, Collection $addresses): ?CustomerAddress
     {
@@ -79,6 +80,11 @@ class CheckoutSession
                 ->sortBy('cart_item_id')
                 ->values()
                 ->all(),
+            'promotion' => [
+                'id' => $cartEvaluation['promotion_evaluation']['promotion']?->id,
+                'code' => $cartEvaluation['promotion_evaluation']['promotion']?->code,
+                'discount_total' => (int) ($cartEvaluation['discount_total'] ?? 0),
+            ],
             'address_id' => $address->id,
             'shipping' => collect($shippingData['shipping_groups'])
                 ->map(fn (array $group): array => [
@@ -89,6 +95,9 @@ class CheckoutSession
                 ->values()
                 ->all(),
             'payment_method' => $paymentMethod,
+            'wallet_selected' => (bool) request()->session()->get('checkout.use_wallet', false),
+            'gift_card' => request()->session()->get(self::GIFT_CARD_KEY),
+            'currency' => app(\App\Services\CurrencyContext::class)->current(request())->code,
         ]));
     }
 

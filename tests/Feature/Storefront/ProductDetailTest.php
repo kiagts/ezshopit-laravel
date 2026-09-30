@@ -8,8 +8,10 @@ use App\Enums\ProductAttributeType;
 use App\Enums\ProductStatus;
 use App\Enums\ProductType;
 use App\Enums\VendorStatus;
+use App\Enums\HomepageSectionType;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\HomepageSection;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductAttribute;
@@ -183,6 +185,15 @@ class ProductDetailTest extends TestCase
     {
         $category = Category::factory()->create(['slug' => 'phones']);
         $product = $this->createPublicProduct('Linked Product Card', category: $category);
+        HomepageSection::query()->create([
+            'key' => 'products',
+            'type' => HomepageSectionType::Products,
+            'name' => 'Products',
+            'title' => 'Products',
+            'is_enabled' => true,
+            'sort_order' => 10,
+            'settings' => ['source' => 'latest', 'limit' => 8],
+        ]);
 
         $this->get(route('home'))
             ->assertOk()

@@ -20,6 +20,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Existing lifecycle/inventory seeders rebuild demo history. Never run them
+        // over an operational database; only add eligible return examples.
+        if (\App\Models\Order::query()->exists()) {
+            $this->command?->info('Preserving existing orders and stock history; seeding operational returns only.');
+            $this->call(ReturnWorkflowSeeder::class);
+            $this->call(RefundWorkflowSeeder::class);
+            $this->call(DisputeWorkflowSeeder::class);
+            $this->call(NotificationSeeder::class);
+            $this->call(CommerceDocumentSeeder::class);
+        $this->call(VendorFinanceSeeder::class);
+            return;
+        }
         $this->call(CategorySeeder::class);
         $this->call(BrandSeeder::class);
         $this->call(AttributeSeeder::class);
@@ -77,8 +89,24 @@ class DatabaseSeeder extends Seeder
         $this->call(CommissionSeeder::class);
         $this->call(VendorPayoutSeeder::class);
         $this->call(ProductReviewSeeder::class);
+        $this->call(PromotionSeeder::class);
         $this->call(WishlistSeeder::class);
         $this->call(CartSeeder::class);
+        $this->call(NotificationSeeder::class);
+        $this->call(HomepageSeeder::class);
+        $this->call(CmsPageSeeder::class);
+        $this->call(SettingSeeder::class);
+        $this->call(NavigationSeeder::class);
+        $this->call(MarketSeeder::class);
+        $this->call(CurrencySeeder::class);
+        $this->call(LanguageSeeder::class);
+        $this->call(WalletSeeder::class);
+        $this->call(GiftCardSeeder::class);
+        $this->call(ReturnWorkflowSeeder::class);
+        $this->call(RefundWorkflowSeeder::class);
+        $this->call(DisputeWorkflowSeeder::class);
+        $this->call(CommerceDocumentSeeder::class);
+        $this->call(VendorFinanceSeeder::class);
     }
 
     private function user(string $name, string $email, UserRole $role): User
@@ -124,3 +152,4 @@ class DatabaseSeeder extends Seeder
         return $vendor;
     }
 }
+

@@ -6,7 +6,7 @@
         : null;
 @endphp
 
-<header class="sticky top-0 z-40 border-b border-neutral-200 bg-white">
+<header class="sticky top-0 z-40 overflow-x-clip border-b border-neutral-200 bg-white">
 
     {{-- ========================================================= --}}
     {{-- MAIN HEADER --}}
@@ -48,6 +48,8 @@
                     <img 
                         src="{{ Storage::url('frontstore/images/logo.png') }}"
                         alt="{{ config('marketplace.name') }}"
+                        class="h-12 w-32 object-contain sm:w-40"
+                        width="160" height="48"
                     >
                 </a>
             </div>
@@ -115,7 +117,7 @@
                 @guest
                     <a
                         href="{{ route('login') }}"
-                        class="group relative flex min-w-14 shrink-0 flex-col items-center justify-center gap-1 text-neutral-700 transition hover:text-neutral-950"
+                        class="group relative hidden min-w-14 shrink-0 flex-col items-center justify-center gap-1 text-neutral-700 transition hover:text-neutral-950 sm:flex"
                         aria-label="Wishlist"
                         title="Wishlist"
                     >
@@ -148,7 +150,7 @@
 
                     <a
                         href="{{ route('account.wishlist.index') }}"
-                        class="group relative flex min-w-14 shrink-0 flex-col items-center justify-center gap-1 text-neutral-700 transition hover:text-neutral-950"
+                        class="group relative hidden min-w-14 shrink-0 flex-col items-center justify-center gap-1 text-neutral-700 transition hover:text-neutral-950 sm:flex"
                         aria-label="Wishlist"
                         title="Wishlist"
                     >
@@ -233,6 +235,18 @@
                         </span>
                     </a>
                 @endif
+
+                @auth
+                    @if (auth()->user()->isCustomer())
+                        <div class="hidden sm:block">
+                        <x-notification-bell
+                            index-route="account.notifications.index"
+                            open-route="account.notifications.open"
+                            read-all-route="account.notifications.read-all"
+                        />
+                        </div>
+                    @endif
+                @endauth
 
                 {{-- ===================================================== --}}
                 {{-- ACCOUNT --}}
@@ -355,21 +369,9 @@
                 Categories
             </button>
 
-            <span class="font-medium text-dark hover:text-dark">
-                New Arrivals
-            </span>
-
-            <span class="font-medium text-dark hover:text-dark">
-                Best Sellers
-            </span>
-
-            <span class="font-medium text-dark hover:text-dark-300">
-                Deals
-            </span>
-
-            <span class="font-medium text-dark hover:text-dark">
-                Brands
-            </span>
+            @foreach (($headerNavigation ?? []) as $item)
+                <a href="{{ $item['url'] }}" @if($item['new_tab']) target="_blank" rel="noopener noreferrer" @endif class="font-medium text-dark hover:text-brand-700">{{ $item['label'] }}</a>
+            @endforeach
 
             <a
                 href="{{ route('vendor.apply') }}"

@@ -6,6 +6,7 @@ enum RefundStatus: string
 {
     case Pending = 'pending';
     case Processing = 'processing';
+    case PartiallyProcessed = 'partially_processed';
     case Succeeded = 'succeeded';
     case Failed = 'failed';
     case Cancelled = 'cancelled';
@@ -21,7 +22,7 @@ enum RefundStatus: string
     public function customerLabel(): string
     {
         return match ($this) {
-            self::Pending, self::Processing => 'Refund processing',
+            self::Pending, self::Processing, self::PartiallyProcessed => 'Refund processing',
             self::Succeeded => 'Refunded',
             self::Failed, self::Cancelled => 'Refund not completed',
         };
@@ -31,7 +32,7 @@ enum RefundStatus: string
     {
         return match ($this) {
             self::Pending => 'warning',
-            self::Processing => 'brand',
+            self::Processing, self::PartiallyProcessed => 'brand',
             self::Succeeded => 'success',
             self::Failed, self::Cancelled => 'danger',
         };
@@ -39,7 +40,7 @@ enum RefundStatus: string
 
     public function protectsCapacity(): bool
     {
-        return in_array($this, [self::Pending, self::Processing], true);
+        return in_array($this, [self::Pending, self::Processing, self::PartiallyProcessed], true);
     }
 
     public function isTerminal(): bool

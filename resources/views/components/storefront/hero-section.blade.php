@@ -1,7 +1,20 @@
 @props([
     'featuredProducts' => [],
     'smallBannerSliders' => [],
+    'eyebrow' => 'Trusted Marketplace',
+    'title' => 'Shop smarter. Choose trusted.',
+    'description' => 'Discover quality products from verified sellers, all in one cleaner marketplace.',
+    'primaryCtaLabel' => 'Start Shopping',
+    'primaryCtaUrl' => null,
+    'secondaryCtaLabel' => 'Become a Seller',
+    'secondaryCtaUrl' => null,
+    'benefits' => ['Verified Sellers', 'Secure Checkout', 'Curated Products'],
 ])
+
+@php
+    $primaryCtaUrl ??= route('storefront.search');
+    $secondaryCtaUrl ??= route('vendor.apply');
+@endphp
 
 <section class="bg-white py-6 sm:py-8">
     <x-container>
@@ -15,33 +28,28 @@
                     <span
                         class="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
                     >
-                        Trusted Marketplace
+                        {{ $eyebrow }}
                     </span>
 
                     <h1
                         class="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-neutral-950 sm:text-5xl"
                     >
-                        Shop smarter.
-
-                        <span class="block">
-                            Choose trusted.
-                        </span>
+                        {{ $title }}
                     </h1>
 
                     <p
                         class="mt-5 max-w-lg text-sm leading-6 text-neutral-600 sm:text-base"
                     >
-                        Discover quality products from verified sellers,
-                        all in one cleaner marketplace.
+                        {{ $description }}
                     </p>
 
                     {{-- Buttons --}}
                     <div class="mt-7 flex flex-wrap gap-3">
                         <a
-                            href="{{ route('storefront.search') }}"
+                            href="{{ $primaryCtaUrl }}"
                             class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
                         >
-                            Start Shopping
+                            {{ $primaryCtaLabel }}
 
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -60,44 +68,26 @@
                         </a>
 
                         <a
-                            href="{{ route('vendor.apply') }}"
+                            href="{{ $secondaryCtaUrl }}"
                             class="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-700 bg-white px-5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
                         >
-                            Become a Seller
+                            {{ $secondaryCtaLabel }}
                         </a>
                     </div>
 
                     {{-- Benefits --}}
                     <div class="mt-8 grid gap-4 border-t border-neutral-200 pt-5 sm:grid-cols-3" >
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-emerald-700">
-                                ✓
-                            </span>
+                        @foreach ($benefits as $benefit)
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-emerald-700">
+                                    ✓
+                                </span>
 
-                            <span class="text-xs font-medium text-neutral-700">
-                                Verified Sellers
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-emerald-700">
-                                ✓
-                            </span>
-
-                            <span class="text-xs font-medium text-neutral-700">
-                                Secure Checkout
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-emerald-700">
-                                ✓
-                            </span>
-
-                            <span class="text-xs font-medium text-neutral-700">
-                                Curated Products
-                            </span>
-                        </div>
+                                <span class="text-xs font-medium text-neutral-700">
+                                    {{ $benefit }}
+                                </span>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 

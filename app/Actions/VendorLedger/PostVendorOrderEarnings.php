@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class PostVendorOrderEarnings
 {
+    public function __construct(
+        private readonly PostVendorPromotionDiscountDebit $postVendorPromotionDiscountDebit,
+    ) {
+    }
+
     public function handle(VendorOrderCommission $commission): int
     {
         return DB::transaction(function () use ($commission): int {
@@ -64,6 +69,10 @@ class PostVendorOrderEarnings
                         'commissionable_amount' => (int) $commission->original_commissionable_amount,
                     ],
                 ]);
+            }
+
+            if ((int) $vendorOrder->vendor_discount_total > 0 && $this->postVendorPromotionDiscountDebit->handle($commission)) {
+                $created++;
             }
 
             return $created;

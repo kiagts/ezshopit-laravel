@@ -41,7 +41,8 @@ class OrderLifecycleSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function (): void {
-            $this->deleteDemoOrders();
+            // Preserve existing immutable commerce when this seeder is invoked directly.
+            if (Order::where('order_number', 'like', 'DEMO-LIFE-%')->exists()) { return; }
 
             $customer = User::query()->where('email', 'customer@example.com')->first();
             $vendor = Vendor::query()->where('slug', 'techverse')->first();
@@ -73,44 +74,6 @@ class OrderLifecycleSeeder extends Seeder
             $this->mixedVendorOrder($customer, $address, $vendor, $method, $variant, $secondVendor, $secondMethod, $secondVariant);
             $this->refundDemoOrders($customer, $address, $vendor, $method, $variant);
         });
-    }
-
-    private function deleteDemoOrders(): void
-    {
-        $vendorOrderIds = VendorOrder::query()
-            ->whereHas('order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))
-            ->pluck('id');
-
-        InventoryMovement::query()
-            ->where('reference_type', VendorOrder::class)
-            ->whereIn('reference_id', $vendorOrderIds)
-            ->delete();
-
-        VendorLedgerEntry::query()
-            ->whereIn('vendor_order_id', $vendorOrderIds)
-            ->delete();
-
-        $commissionIds = VendorOrderCommission::query()
-            ->whereIn('vendor_order_id', $vendorOrderIds)
-            ->pluck('id');
-
-        CommissionAdjustment::query()
-            ->whereIn('vendor_order_commission_id', $commissionIds)
-            ->delete();
-
-        VendorOrderCommission::query()
-            ->whereIn('id', $commissionIds)
-            ->delete();
-
-        ProductReview::query()
-            ->whereHas('orderItem.vendorOrder.order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))
-            ->forceDelete();
-
-        Refund::query()
-            ->whereHas('order', fn ($query) => $query->where('order_number', 'like', 'DEMO-LIFE-%'))
-            ->delete();
-
-        Order::query()->where('order_number', 'like', 'DEMO-LIFE-%')->delete();
     }
 
     private function singleVendorOrder(string $number, User $customer, CustomerAddress $address, Vendor $vendor, ShippingMethod $method, ProductVariant $variant, VendorOrderStatus $status, int $quantity, \DateTimeInterface $placedAt): void
@@ -451,3 +414,4 @@ class OrderLifecycleSeeder extends Seeder
         return $variant->load(['inventory', 'product']);
     }
 }
+

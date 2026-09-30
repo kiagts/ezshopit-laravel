@@ -30,7 +30,7 @@ class ApplyRefundCommissionAdjustment
                 ->lockForUpdate()
                 ->findOrFail($allocation->id);
 
-            if ($allocation->refund?->status !== RefundStatus::Succeeded || ! $allocation->vendor_order_id) {
+            if (! $allocation->refund?->economicsRecognized() || ! $allocation->vendor_order_id) {
                 return null;
             }
 
@@ -44,7 +44,17 @@ class ApplyRefundCommissionAdjustment
                 return $allocation->commissionAdjustment()->first();
             }
 
-            if ($allocation->refund->processed_at && $commission->recognized_at && $allocation->refund->processed_at->lessThanOrEqualTo($commission->recognized_at)) {
+            if ($allocation->refund->idempotency_key) {
+                $debit = \App\Models\VendorLedgerEntry::where('source_key', 'refund-allocation:'.$allocation->id.':refund')->first();
+                // Recognition already nets refunds posted before commission existed.
+                if ($debit && array_key_exists('commission_id_at_refund', $debit->metadata ?? [])) {
+                    if ($debit->metadata['commission_id_at_refund'] === null) return null;
+                } elseif ($allocation->refund->economics_posted_at?->lessThanOrEqualTo($commission->recognized_at)) {
+                    return null;
+                }
+            }
+
+            if (! $allocation->refund->idempotency_key && $allocation->refund->processed_at && $commission->recognized_at && $allocation->refund->processed_at->lessThanOrEqualTo($commission->recognized_at)) {
                 return null;
             }
 
@@ -58,6 +68,17 @@ class ApplyRefundCommissionAdjustment
                 $this->calculator->calculate(abs($commissionableDelta), $commission->rate_basis_points),
                 $this->calculator->netCommissionAmount($commission),
             );
+
+            if ($allocation->refund->idempotency_key) {
+                $usedBasis = abs((int) $commission->adjustments->sum('commissionable_amount_delta'));
+                $usedCommission = abs((int) $commission->adjustments->sum('commission_amount_delta'));
+                $commissionableDelta = -min(abs($commissionableDelta), max(0, $commission->original_commissionable_amount - $usedBasis));
+                $basis = $usedBasis + abs($commissionableDelta);
+                $target = $basis >= $commission->original_commissionable_amount
+                    ? $commission->original_commission_amount
+                    : min($commission->original_commission_amount, $this->calculator->calculate($basis, $commission->rate_basis_points));
+                $commissionDelta = -max(0, $target - $usedCommission);
+            }
 
             return $commission->adjustments()->create([
                 'refund_id' => $allocation->refund_id,
@@ -87,7 +108,7 @@ class ApplyRefundCommissionAdjustment
     private function commissionableDelta(VendorOrderCommission $commission, RefundAllocation $allocation): int
     {
         if ($allocation->type === RefundAllocationType::Item) {
-            return -1 * $allocation->amount;
+            return -1 * (int) ($allocation->seller_amount ?? $allocation->amount);
         }
 
         if ($allocation->type === RefundAllocationType::Shipping && $commission->include_shipping) {

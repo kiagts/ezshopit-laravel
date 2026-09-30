@@ -97,7 +97,7 @@
                         ->substr(0, 1)
                         ->upper();
 
-                    $brandLogo = $brand->logo_path ?? null;
+                    $brandLogo = $brand->logo_path ? Storage::url($brand->logo_path) : null;
 
                     $productCount = $brand->products_count ?? null;
 

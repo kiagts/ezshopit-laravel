@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('orders:expire-unpaid')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('notifications:retry')->everyMinute()->withoutOverlapping();

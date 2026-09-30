@@ -10,6 +10,7 @@
         ->take(2)
         ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
         ->implode('');
+    $unreadNotificationsCount = $user->unreadNotifications()->count();
 @endphp
 
 <aside
@@ -21,19 +22,8 @@
     {{-- CUSTOMER PROFILE --}}
     {{-- ========================================================= --}}
     <div
-        class="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 px-5 py-5"
+        class="bg-neutral-950 px-5 py-5"
     >
-        {{-- Decorative Background --}}
-        <div
-            class="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/5"
-            aria-hidden="true"
-        ></div>
-
-        <div
-            class="absolute -bottom-12 right-10 h-24 w-24 rounded-full bg-emerald-400/10"
-            aria-hidden="true"
-        ></div>
-
         <div class="relative z-10 flex items-center gap-3.5">
 
             {{-- Avatar --}}
@@ -238,6 +228,51 @@
 
 
             {{-- ================================================= --}}
+            {{-- NOTIFICATIONS --}}
+            {{-- ================================================= --}}
+            <a
+                href="{{ route('account.notifications.index') }}"
+                @class([
+                    'group flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',
+                    'bg-emerald-50 text-emerald-800' => $active === 'notifications',
+                    'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950' => $active !== 'notifications',
+                ])
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    class="h-5 w-5 shrink-0"
+                    aria-hidden="true"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                    />
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M13.73 21a2 2 0 0 1-3.46 0"
+                    />
+                </svg>
+
+                <span class="min-w-0 flex-1">
+                    Notifications
+                </span>
+
+                @if ($unreadNotificationsCount > 0)
+                    <span class="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-semibold text-white">
+                        {{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}
+                    </span>
+                @endif
+            </a>
+
+
+            {{-- ================================================= --}}
             {{-- WISHLIST --}}
             {{-- ================================================= --}}
             <a
@@ -269,6 +304,42 @@
                 </span>
             </a>
 
+            <a
+                href="{{ route('account.profile.edit') }}"
+                @class([
+                    'group flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',
+                    'bg-emerald-50 text-emerald-800' => $active === 'profile',
+                    'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950' => $active !== 'profile',
+                ])
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="h-5 w-5 shrink-0" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 7.5a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 20.25a7.5 7.5 0 0 1 15 0" />
+                </svg>
+
+                <span>Profile</span>
+            </a>
+
+            <a
+                href="{{ route('account.security.edit') }}"
+                @class([
+                    'group flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',
+                    'bg-emerald-50 text-emerald-800' => $active === 'security',
+                    'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950' => $active !== 'security',
+                ])
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="h-5 w-5 shrink-0" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 19.25 7v5.5c0 4.25-3 7.25-7.25 8.75-4.25-1.5-7.25-4.5-7.25-8.75V7L12 3.75Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 12.25 1.5 1.5 3.25-3.5" />
+                </svg>
+
+                <span>Security</span>
+            </a>
+
+            <a href="{{ route('account.wallet') }}" class="block rounded px-4 py-3 text-sm font-medium hover:bg-neutral-100">Wallet</a>
+            <a href="{{ route('account.gift-cards.index') }}" class="block rounded px-4 py-3 text-sm font-medium hover:bg-neutral-100">Gift Cards</a>
+            <a href="{{ route('account.returns.index') }}" class="block rounded px-4 py-3 text-sm font-medium hover:bg-neutral-100">Returns</a>
+            <a href="{{ route('account.disputes.index') }}" class="block rounded px-4 py-3 text-sm font-medium hover:bg-neutral-100">Disputes</a>
         </nav>
 
 

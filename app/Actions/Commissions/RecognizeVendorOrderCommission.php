@@ -42,8 +42,9 @@ class RecognizeVendorOrderCommission
             }
 
             $rule = $this->ruleResolver->resolveFor($vendorOrder);
+            $sellerItemsAmount = max(0, (int) $vendorOrder->items_subtotal - (int) $vendorOrder->vendor_discount_total);
             $originalCommissionable = $this->calculator->commissionableAmount(
-                (int) $vendorOrder->items_subtotal,
+                $sellerItemsAmount,
                 (int) $vendorOrder->shipping_total,
                 (bool) $rule->include_shipping,
             );
@@ -54,7 +55,7 @@ class RecognizeVendorOrderCommission
                 'commission_rule_id' => $rule->id,
                 'rate_basis_points' => $rule->rate_basis_points,
                 'include_shipping' => $rule->include_shipping,
-                'original_items_amount' => $vendorOrder->items_subtotal,
+                'original_items_amount' => $sellerItemsAmount,
                 'original_shipping_amount' => $vendorOrder->shipping_total,
                 'original_commissionable_amount' => $netCommissionable,
                 'original_commission_amount' => $this->calculator->calculate($netCommissionable, $rule->rate_basis_points),
@@ -85,7 +86,7 @@ class RecognizeVendorOrderCommission
     {
         return (int) RefundAllocation::query()
             ->where('vendor_order_id', $vendorOrder->id)
-            ->whereHas('refund', fn ($query) => $query->where('status', RefundStatus::Succeeded->value))
+            ->whereHas('refund', fn ($query) => $query->where(fn ($q) => $q->where('status', RefundStatus::Succeeded->value)->orWhereNotNull('economics_posted_at')))
             ->where(function ($query) use ($includeShipping): void {
                 $query->where('type', RefundAllocationType::Item->value);
 
@@ -93,6 +94,6 @@ class RecognizeVendorOrderCommission
                     $query->orWhere('type', RefundAllocationType::Shipping->value);
                 }
             })
-            ->sum('amount');
+            ->sum(DB::raw('COALESCE(seller_amount, amount)'));
     }
 }

@@ -7,6 +7,7 @@
 @section('title', $order->order_number)
 
 @section('content')
+    <div class="mb-4 flex flex-wrap gap-3"><x-button :href="route('admin.documents.invoice', $order)" variant="secondary">{{ __('documents.download') }}</x-button><x-button :href="route('admin.documents.print', $order)" variant="secondary">{{ __('documents.print') }}</x-button></div>
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <x-badge :tone="$order->status->badgeTone()">{{ $order->status->label() }}</x-badge>

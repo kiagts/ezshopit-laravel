@@ -1,0 +1,3 @@
+<?php
+use Illuminate\Database\Migrations\Migration;use Illuminate\Database\Schema\Blueprint;use Illuminate\Support\Facades\Schema;
+return new class extends Migration{public function up():void{foreach(['orders','vendor_orders'] as $table)if(Schema::hasTable($table)&&!Schema::hasColumn($table,'tax_total'))Schema::table($table,fn(Blueprint $t)=>$t->unsignedBigInteger('tax_total')->default(0)->after('shipping_total'));}public function down():void{foreach(['orders','vendor_orders'] as $table)if(Schema::hasColumn($table,'tax_total'))Schema::table($table,fn(Blueprint $t)=>$t->dropColumn('tax_total'));}};

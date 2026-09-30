@@ -97,6 +97,11 @@ class Vendor extends Model
         return $this->hasMany(VendorPayout::class);
     }
 
+    public function promotions(): HasMany
+    {
+        return $this->hasMany(Promotion::class);
+    }
+
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', VendorStatus::Pending);

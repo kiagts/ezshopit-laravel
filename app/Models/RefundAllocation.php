@@ -15,18 +15,22 @@ class RefundAllocation extends Model
     use HasFactory;
 
     protected $fillable = [
+        'return_item_id', 'gross_amount', 'discount_amount', 'merchandise_amount', 'tax_amount',
         'vendor_order_id',
         'order_item_id',
         'type',
         'amount',
+        'seller_amount',
         'quantity',
     ];
 
     protected function casts(): array
     {
         return [
+            'gross_amount'=>'integer', 'discount_amount'=>'integer', 'merchandise_amount'=>'integer', 'tax_amount'=>'integer',
             'type' => RefundAllocationType::class,
             'amount' => 'integer',
+            'seller_amount' => 'integer',
             'quantity' => 'integer',
         ];
     }

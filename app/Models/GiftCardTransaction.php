@@ -1,0 +1,4 @@
+<?php
+namespace App\Models;
+use App\Enums\GiftCardTransactionType; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo;
+class GiftCardTransaction extends Model { protected $fillable=['gift_card_id','type','amount','currency_code','reference_type','reference_id','idempotency_key','actor_id','description','metadata']; protected function casts():array{return ['type'=>GiftCardTransactionType::class,'amount'=>'integer','metadata'=>'array','reference_id'=>'integer'];} public function giftCard():BelongsTo{return $this->belongsTo(GiftCard::class);} protected static function booted():void{static::updating(fn()=>throw new \LogicException('Gift-card ledger entries are immutable.'));static::deleting(fn()=>throw new \LogicException('Gift-card ledger entries are immutable.'));static::creating(function($e){if($e->amount<=0)throw new \InvalidArgumentException('Invalid gift-card amount.');});} }

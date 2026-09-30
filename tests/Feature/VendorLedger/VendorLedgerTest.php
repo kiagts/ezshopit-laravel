@@ -202,7 +202,9 @@ class VendorLedgerTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertDatabaseCount('vendor_ledger_entries', 9);
+        $demoOrderIds = \App\Models\Order::where('order_number', 'like', 'DEMO-REFUND-%')->pluck('id');
+        $this->assertSame(9, VendorLedgerEntry::where(fn ($q) => $q->whereNotIn('order_id', $demoOrderIds)->orWhereNull('order_id'))->count());
+        $this->assertSame(6, VendorLedgerEntry::whereIn('order_id', $demoOrderIds)->count());
         $this->assertSame(VendorLedgerEntry::query()->count(), VendorLedgerEntry::query()->distinct('source_key')->count('source_key'));
         $this->assertDatabaseHas('vendor_ledger_entries', ['type' => VendorLedgerEntryType::Sale->value]);
         $this->assertDatabaseHas('vendor_ledger_entries', ['type' => VendorLedgerEntryType::Commission->value]);

@@ -6,16 +6,20 @@ use App\Enums\ProductReviewStatus;
 use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\Reviews\ProductRatingService;
 use Illuminate\Support\Facades\DB;
 
 class RejectProductReview
 {
-    public function __construct(private readonly ProductRatingService $ratings) {}
+    public function __construct(
+        private readonly ProductRatingService $ratings,
+        private readonly MarketplaceNotifier $notifier,
+    ) {}
 
     public function handle(ProductReview $review, User $admin, string $reason): ProductReview
     {
-        return DB::transaction(function () use ($review, $admin, $reason): ProductReview {
+        $review = DB::transaction(function () use ($review, $admin, $reason): ProductReview {
             $review = ProductReview::query()->whereKey($review->id)->lockForUpdate()->firstOrFail();
             $product = Product::query()->whereKey($review->product_id)->lockForUpdate()->firstOrFail();
 
@@ -33,5 +37,9 @@ class RejectProductReview
 
             return $review;
         });
+
+        $this->notifier->reviewModerated($review);
+
+        return $review;
     }
 }

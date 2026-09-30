@@ -39,10 +39,11 @@
                         <tr>
                             <th class="px-4 py-3">Store</th>
                             <th class="px-4 py-3">Owner</th>
-                            <th class="px-4 py-3">Email</th>
-                            <th class="px-4 py-3">Phone</th>
                             <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Products</th>
+                            <th class="px-4 py-3">Orders</th>
                             <th class="px-4 py-3">Submitted</th>
+                            <th class="px-4 py-3">Last Updated</th>
                             <th class="px-4 py-3">Joined</th>
                         </tr>
                     </thead>
@@ -54,10 +55,11 @@
                                     <p class="mt-1 text-xs text-neutral-500">{{ $vendor->business_name }}</p>
                                 </td>
                                 <td class="px-4 py-4 text-neutral-700">{{ $vendor->user->name }}</td>
-                                <td class="px-4 py-4 text-neutral-700">{{ $vendor->email }}</td>
-                                <td class="px-4 py-4 text-neutral-700">{{ $vendor->phone ?? 'Not provided' }}</td>
                                 <td class="px-4 py-4"><x-badge :tone="$vendor->status->badgeTone()">{{ $vendor->status->label() }}</x-badge></td>
+                                <td class="px-4 py-4 text-neutral-700">{{ number_format($vendor->products_count) }}</td>
+                                <td class="px-4 py-4 text-neutral-700">{{ number_format($vendor->vendor_orders_count) }}</td>
                                 <td class="px-4 py-4 text-neutral-700">{{ $vendor->submitted_at?->format('M j, Y') ?? 'Not submitted' }}</td>
+                                <td class="px-4 py-4 text-neutral-700">{{ $vendor->updated_at->format('M j, Y') }}</td>
                                 <td class="px-4 py-4 text-neutral-700">{{ $vendor->created_at->format('M j, Y') }}</td>
                             </tr>
                         @endforeach

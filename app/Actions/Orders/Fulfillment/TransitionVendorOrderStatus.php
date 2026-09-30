@@ -6,6 +6,7 @@ use App\Actions\Commissions\RecognizeVendorOrderCommission;
 use App\Enums\VendorOrderStatus;
 use App\Models\User;
 use App\Models\VendorOrder;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\Payments\CanFulfillVendorOrder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,12 +20,15 @@ class TransitionVendorOrderStatus
         private readonly RecalculateOrderStatus $recalculateOrderStatus,
         private readonly CanFulfillVendorOrder $canFulfillVendorOrder,
         private readonly RecognizeVendorOrderCommission $recognizeVendorOrderCommission,
+        private readonly MarketplaceNotifier $notifier,
     ) {
     }
 
     public function handle(VendorOrder $vendorOrder, VendorOrderStatus $target, ?User $actor = null, ?string $reason = null): VendorOrder
     {
         $transitioned = DB::transaction(function () use ($vendorOrder, $target, $actor, $reason): VendorOrder {
+            // Match whole-order cancellation lock order and serialize aggregate status changes.
+            \App\Models\Order::whereKey($vendorOrder->order_id)->lockForUpdate()->firstOrFail();
             $locked = VendorOrder::query()
                 ->with('order')
                 ->whereKey($vendorOrder->id)
@@ -62,6 +66,9 @@ class TransitionVendorOrderStatus
             };
 
             $this->recalculateOrderStatus->handle($locked->order);
+            if ($locked->order->status === \App\Enums\OrderStatus::Cancelled) {
+                app(\App\Services\WalletService::class)->reverseCancelledOrder($locked->order);
+            }
 
             return $locked->refresh()->load(['order', 'items.reservation']);
         }, 3);
@@ -77,6 +84,8 @@ class TransitionVendorOrderStatus
                 ]);
             }
         }
+
+        $this->notifier->vendorOrderStatusChanged($transitioned, $target);
 
         return $transitioned;
     }

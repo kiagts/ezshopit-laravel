@@ -42,7 +42,7 @@ class RefundFoundationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_stripe_item_and_shipping_refund_with_provider_derived_values(): void
+    public function test_admin_refund_preserves_historical_values_and_reserves_external_funding_without_provider_success(): void
     {
         [$order, $payment, $vendorOrders] = $this->paidStripeOrder();
         $admin = User::factory()->admin()->create();
@@ -69,13 +69,15 @@ class RefundFoundationTest extends TestCase
         $this->assertSame('stripe', $refund->provider);
         $this->assertSame('USD', $refund->currency);
         $this->assertSame($item->unit_price + 500, $refund->amount);
-        $this->assertSame(RefundStatus::Succeeded, $refund->status);
-        $this->assertSame('re_test_1', $refund->provider_reference);
+        $this->assertSame(RefundStatus::PartiallyProcessed, $refund->status);
+        $this->assertNull($refund->provider_reference);
         $this->assertSame($refund->amount, $refund->allocations->sum('amount'));
-        $this->assertSame($payment->provider_reference, $fake->paymentIntent);
-        $this->assertSame($refund->amount, $fake->amount);
-        $this->assertSame(PaymentStatus::PartiallyRefunded, $payment->refresh()->status);
-        $this->assertSame(PaymentStatus::PartiallyRefunded, $order->refresh()->payment_status);
+        $this->assertNull($fake->paymentIntent);
+        $this->assertNull($fake->amount);
+        $this->assertSame('pending_provider', $refund->fundingAllocations->sole()->status->value);
+        $this->assertSame($refund->amount, $refund->fundingAllocations->sole()->amount);
+        $this->assertSame(PaymentStatus::Paid, $payment->refresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $order->refresh()->payment_status);
     }
 
     public function test_uncollected_payments_cannot_be_refunded(): void

@@ -10,11 +10,14 @@ use App\Http\Controllers\Vendor\OnboardingController;
 use App\Http\Controllers\Vendor\OrderController as VendorOrderController;
 use App\Http\Controllers\Vendor\PayoutController;
 use App\Http\Controllers\Vendor\PayoutMethodController;
+use App\Http\Controllers\Vendor\PromotionController;
 use App\Http\Controllers\Vendor\Products\CategoryConfigurationController;
 use App\Http\Controllers\Vendor\Products\ProductController;
 use App\Http\Controllers\Vendor\Products\ProductImageController;
 use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\ShippingMethodController;
+use App\Http\Controllers\Vendor\StoreProfileController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth', 'role:'.UserRole::Vendor->value])
@@ -25,6 +28,10 @@ Route::middleware(['web', 'auth', 'role:'.UserRole::Vendor->value])
         Route::patch('/onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
         Route::post('/onboarding/submit', [OnboardingController::class, 'submit'])->name('onboarding.submit');
         Route::get('/application-status', ApplicationStatusController::class)->name('application-status');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+        Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('/payouts', [PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/{payout:payout_number}', [PayoutController::class, 'show'])->name('payouts.show');
         Route::post('/payouts/{payout:payout_number}/cancel', [PayoutController::class, 'cancel'])->name('payouts.cancel');
@@ -41,6 +48,9 @@ Route::middleware(['web', 'auth', 'role:'.UserRole::Vendor->value])
             Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
             Route::get('/earnings', EarningsController::class)->name('earnings.index');
             Route::get('/reviews', ReviewController::class)->name('reviews.index');
+            Route::get('/store', [StoreProfileController::class, 'edit'])->name('store.edit');
+            Route::put('/store', [StoreProfileController::class, 'update'])->name('store.update');
+            Route::resource('promotions', PromotionController::class)->except('show', 'destroy');
             Route::post('/payouts', [PayoutController::class, 'store'])->name('payouts.store');
             Route::post('/payout-methods/{payoutMethod}/default', [PayoutMethodController::class, 'default'])->name('payout-methods.default');
             Route::resource('payout-methods', PayoutMethodController::class)

@@ -21,7 +21,11 @@ class VendorOrder extends Model
         'vendor_order_number',
         'status',
         'items_subtotal',
+        'discount_total',
+        'marketplace_discount_total',
+        'vendor_discount_total',
         'shipping_total',
+        'tax_total',
         'grand_total',
         'shipping_method_name',
         'shipping_method_code',
@@ -43,7 +47,11 @@ class VendorOrder extends Model
         return [
             'status' => VendorOrderStatus::class,
             'items_subtotal' => 'integer',
+            'discount_total' => 'integer',
+            'marketplace_discount_total' => 'integer',
+            'vendor_discount_total' => 'integer',
             'shipping_total' => 'integer',
+            'tax_total' => 'integer',
             'grand_total' => 'integer',
             'shipping_min_delivery_days' => 'integer',
             'shipping_max_delivery_days' => 'integer',
@@ -96,6 +104,11 @@ class VendorOrder extends Model
         return $this->hasMany(VendorLedgerEntry::class);
     }
 
+    public function discountAllocations(): HasMany
+    {
+        return $this->hasMany(OrderDiscountAllocation::class);
+    }
+
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
@@ -113,5 +126,15 @@ class VendorOrder extends Model
         return $min === $max
             ? "{$min} business ".str('day')->plural($min)
             : "{$min}-{$max} business days";
+    }
+
+    public function customerMerchandiseTotal(): int
+    {
+        return max(0, (int) $this->items_subtotal - (int) $this->discount_total);
+    }
+
+    public function sellerMerchandiseTotal(): int
+    {
+        return max(0, (int) $this->items_subtotal - (int) $this->vendor_discount_total);
     }
 }

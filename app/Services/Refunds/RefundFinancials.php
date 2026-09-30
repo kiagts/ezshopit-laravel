@@ -14,13 +14,21 @@ class RefundFinancials
             ? $payment->refunds
             : $payment->refunds()->get();
 
-        return new PaymentFinancialSummary(
-            originalAmount: (int) $payment->amount,
-            refundedAmount: (int) $refunds->where('status', RefundStatus::Succeeded)->sum('amount'),
-            pendingRefundAmount: (int) $refunds
-                ->filter(fn ($refund): bool => $refund->status->protectsCapacity())
-                ->sum('amount'),
-        );
+        $refunded = 0;
+        $pending = 0;
+        foreach ($refunds as $refund) {
+            if ($refund->idempotency_key) {
+                foreach ($refund->fundingAllocations as $funding) {
+                    if ($funding->source_type !== \App\Enums\RefundFundingSource::ExternalPayment) continue;
+                    if ($funding->status === \App\Enums\RefundFundingStatus::Completed) $refunded += $funding->amount;
+                    elseif ($refund->status->protectsCapacity()) $pending += $funding->amount;
+                }
+            } else {
+                if ($refund->status === RefundStatus::Succeeded) $refunded += $refund->amount;
+                elseif ($refund->status->protectsCapacity()) $pending += $refund->amount;
+            }
+        }
+        return new PaymentFinancialSummary((int) $payment->amount, $refunded, $pending);
     }
 
     public function protectedItemAmount(int $orderItemId): int
@@ -30,6 +38,7 @@ class RefundFinancials
             ->whereHas('refund', fn ($query) => $query->whereIn('status', [
                 RefundStatus::Pending->value,
                 RefundStatus::Processing->value,
+                RefundStatus::PartiallyProcessed->value,
                 RefundStatus::Succeeded->value,
             ]))
             ->sum('amount');
@@ -43,6 +52,7 @@ class RefundFinancials
             ->whereHas('refund', fn ($query) => $query->whereIn('status', [
                 RefundStatus::Pending->value,
                 RefundStatus::Processing->value,
+                RefundStatus::PartiallyProcessed->value,
                 RefundStatus::Succeeded->value,
             ]))
             ->sum('quantity');
@@ -56,6 +66,7 @@ class RefundFinancials
             ->whereHas('refund', fn ($query) => $query->whereIn('status', [
                 RefundStatus::Pending->value,
                 RefundStatus::Processing->value,
+                RefundStatus::PartiallyProcessed->value,
                 RefundStatus::Succeeded->value,
             ]))
             ->sum('amount');
@@ -68,7 +79,7 @@ class RefundFinancials
             : $vendorOrder->refundAllocations()->with('refund')->get();
 
         return (int) $allocations
-            ->filter(fn ($allocation): bool => $allocation->refund?->status === RefundStatus::Succeeded)
-            ->sum('amount');
+            ->filter(fn ($allocation): bool => $allocation->refund?->economicsRecognized())
+            ->sum(fn ($allocation) => $allocation->seller_amount ?? $allocation->amount);
     }
 }

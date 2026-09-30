@@ -10,6 +10,8 @@ use App\Enums\VendorStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RejectVendorRequest;
 use App\Models\Vendor;
+use App\Services\VendorLedger\VendorEarningsService;
+use App\Services\VendorPayouts\VendorPayoutBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,6 +28,7 @@ class VendorController extends Controller
 
         $vendors = Vendor::query()
             ->with('user')
+            ->withCount(['products', 'vendorOrders'])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->search($validated['search'] ?? null)
             ->latest('submitted_at')
@@ -41,10 +44,16 @@ class VendorController extends Controller
         ]);
     }
 
-    public function show(Vendor $vendor): View
+    public function show(Vendor $vendor, VendorEarningsService $earnings, VendorPayoutBalanceService $payoutBalances): View
     {
+        $vendor->loadCount(['products', 'vendorOrders', 'payouts']);
+        $currency = $earnings->currenciesFor($vendor)[0];
+
         return view('admin.vendors.show', [
             'vendor' => $vendor->load(['user', 'approver', 'rejecter']),
+            'financialSummary' => $earnings->summaryFor($vendor, $currency),
+            'payoutBalance' => $payoutBalances->summaryFor($vendor, $currency),
+            'recentPayouts' => $vendor->payouts()->latest('requested_at')->limit(3)->get(),
         ]);
     }
 

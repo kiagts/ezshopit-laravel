@@ -22,22 +22,28 @@
                     <option value="{{ $status->value }}" @selected($filters['status'] === $status->value)>{{ $status->label() }}</option>
                 @endforeach
             </select>
+            <select name="review" class="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <option value="">All review states</option>
+                <option value="required" @selected($filters['review'] === 'required')>Requires review</option>
+                <option value="resolved" @selected($filters['review'] === 'resolved')>Review resolved</option>
+            </select>
             <x-button type="submit" variant="secondary">Filter</x-button>
         </form>
     </div>
 
     <div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-soft">
-        <div class="hidden grid-cols-[1.1fr_1.1fr_1fr_1fr_1fr_auto] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-neutral-500 md:grid">
+        <div class="hidden grid-cols-[1.1fr_1.1fr_.8fr_.8fr_.8fr_1fr_auto] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-neutral-500 md:grid">
             <span>Order</span>
             <span>Customer</span>
             <span>Method</span>
             <span>Status</span>
+            <span>Attempts</span>
             <span>Amount</span>
             <span></span>
         </div>
         <div class="divide-y divide-neutral-100">
             @forelse ($payments as $payment)
-                <article class="grid gap-4 px-5 py-4 md:grid-cols-[1.1fr_1.1fr_1fr_1fr_1fr_auto] md:items-center">
+                <article class="grid gap-4 px-5 py-4 md:grid-cols-[1.1fr_1.1fr_.8fr_.8fr_.8fr_1fr_auto] md:items-center">
                     <div>
                         <p class="font-semibold text-neutral-950">{{ $payment->order->order_number }}</p>
                         <p class="mt-1 text-sm text-neutral-500">{{ $payment->created_at->format('M j, Y') }}</p>
@@ -47,7 +53,13 @@
                         <p class="mt-1 text-sm text-neutral-500">{{ $payment->order->user->email }}</p>
                     </div>
                     <p class="text-sm text-neutral-700">{{ $payment->method->label() }}</p>
-                    <x-badge :tone="$payment->status->badgeTone()">{{ $payment->status->label() }}</x-badge>
+                    <div>
+                        <x-badge :tone="$payment->status->badgeTone()">{{ $payment->status->label() }}</x-badge>
+                        @if ($payment->requires_review_at && ! $payment->review_resolved_at)
+                            <p class="mt-1 text-xs font-medium text-amber-700">Review required</p>
+                        @endif
+                    </div>
+                    <p class="text-sm text-neutral-700">{{ $payment->attempts_count }}</p>
                     <p class="font-semibold text-neutral-950">{{ Money::format($payment->amount) }}</p>
                     <x-button :href="route('admin.payments.show', $payment)" variant="secondary" size="sm">View</x-button>
                 </article>

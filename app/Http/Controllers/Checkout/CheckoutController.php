@@ -33,17 +33,48 @@ class CheckoutController extends Controller
         $selectedAddress = $checkoutSession->selectedAddress($request, $addresses);
         $shippingData = $checkoutShipping->build($request, $evaluation, $selectedAddress);
         $paymentData = $checkoutPayment->build($request);
-        $checkoutReady = $shippingData['shipping_ready'] && $paymentData['payment_ready'];
+        $walletService = app(\App\Services\WalletService::class);
+        $walletCurrency = app(\App\Services\CurrencyContext::class)->current($request)->code;
+        $wallet = \App\Models\Wallet::where('user_id', $request->user()->id)->where('currency_code', $walletCurrency)->first();
+        $walletBalance = $wallet ? $walletService->balance($wallet) : 0;
+        $walletAvailable = $wallet && $wallet->status === \App\Enums\WalletStatus::Active && $walletBalance > 0;
+        $walletSelected = (bool) $request->session()->get('checkout.use_wallet', false);
+        $shippingData['current_total'] += (int) ($evaluation['tax_total'] ?? 0);
+        $walletPreview = $walletAvailable && $walletSelected ? min($walletBalance, $shippingData['current_total']) : 0;
+        $giftCard = null; $giftCardPreview = 0; $giftCardCode = $request->session()->get(CheckoutSession::GIFT_CARD_KEY);
+        if (filled($giftCardCode)) { $giftCard = app(\App\Services\GiftCardService::class)->find((string)$giftCardCode); if ($giftCard && $giftCard->usable() && $giftCard->currency_code === $walletCurrency) $giftCardPreview = min($giftCard->balance(), max(0, $shippingData['current_total'] - $walletPreview)); }
+        $checkoutReady = $shippingData['shipping_ready'] && ($paymentData['payment_ready'] || ($walletPreview > 0 && $walletPreview === $shippingData['current_total']));
 
         return view('checkout.index', array_merge($evaluation, $shippingData, $paymentData, [
             'addresses' => $addresses,
             'selectedAddress' => $selectedAddress,
             'countries' => Countries::supported(),
             'checkoutReady' => $checkoutReady,
+            'walletCurrency' => $walletCurrency, 'walletBalance' => $walletBalance,
+            'walletAvailable' => $walletAvailable, 'walletSelected' => $walletSelected,
+            'walletPreview' => $walletPreview,
+            'giftCard' => $giftCard, 'giftCardPreview' => $giftCardPreview,
             'idempotencyKey' => $selectedAddress && $checkoutReady
                 ? $this->idempotencyKey($request, $checkoutSession, $shippingData, $evaluation, $selectedAddress)
                 : null,
         ]));
+    }
+
+    public function updateWallet(Request $request): RedirectResponse
+    {
+        $request->validate(['use_wallet' => ['required', 'boolean']]);
+        $request->session()->put('checkout.use_wallet', $request->boolean('use_wallet'));
+        $request->session()->forget([CheckoutSession::IDEMPOTENCY_KEY, CheckoutSession::SIGNATURE_KEY]);
+        return redirect()->route('checkout.index');
+    }
+
+    public function updateGiftCard(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['gift_card' => ['nullable','string','max:40']]);
+        if (filled($data['gift_card'] ?? null)) $request->session()->put(CheckoutSession::GIFT_CARD_KEY, trim($data['gift_card']));
+        else $request->session()->forget(CheckoutSession::GIFT_CARD_KEY);
+        $request->session()->forget([CheckoutSession::IDEMPOTENCY_KEY, CheckoutSession::SIGNATURE_KEY]);
+        return redirect()->route('checkout.index');
     }
 
     public function updateAddress(SelectCheckoutAddressRequest $request, PrepareCheckout $prepareCheckout, CheckoutSession $checkoutSession): RedirectResponse
@@ -175,7 +206,7 @@ class CheckoutController extends Controller
             return null;
         }
 
-        return $checkoutSession->idempotencyKey($request, $checkoutSession->signature($evaluation, $selectedAddress, $shippingData, $checkoutSession->paymentMethod($request)));
+        return $checkoutSession->idempotencyKey($request, $checkoutSession->signature($evaluation, $selectedAddress, $shippingData, $checkoutSession->paymentMethod($request) ?? ($request->session()->get('checkout.use_wallet') ? 'wallet' : null)));
     }
 
     private function addresses(Request $request)

@@ -207,12 +207,13 @@ class VendorPayoutTest extends TestCase
         $method = VendorPayoutMethod::factory()->create(['vendor_id' => $vendor->id]);
         $this->ledger($vendor, 10000);
         $payout = app(RequestVendorPayout::class)->handle($vendor, $vendor->user, $method, 10000);
-        $this->ledger($vendor, -3000, VendorLedgerEntryType::Refund, 'later-refund');
+
 
         app(ApproveVendorPayout::class)->handle($payout, $admin);
         app(StartVendorPayoutProcessing::class)->handle($payout->refresh(), $admin);
         app(MarkVendorPayoutPaid::class)->handle($payout->refresh(), $admin);
 
+        $this->ledger($vendor, -3000, VendorLedgerEntryType::Refund, 'later-refund');
         $this->assertSame(-3000, app(VendorPayoutBalanceService::class)->summaryFor($vendor, 'USD')->availableLedgerBalance);
         $this->assertSame(0, app(VendorPayoutBalanceService::class)->summaryFor($vendor, 'USD')->requestableBalance);
     }
@@ -287,3 +288,5 @@ class VendorPayoutTest extends TestCase
         }
     }
 }
+
+

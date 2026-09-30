@@ -1,0 +1,4 @@
+<?php
+use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema;
+return new class extends Migration { public function up():void { Schema::create('return_histories',function(Blueprint $t){$t->id();$t->foreignId('return_id')->constrained('returns')->cascadeOnDelete();$t->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();$t->string('from_status')->nullable();$t->string('to_status');$t->text('note')->nullable();$t->timestamps();}); Schema::create('dispute_messages',function(Blueprint $t){$t->id();$t->foreignId('dispute_id')->constrained()->cascadeOnDelete();$t->foreignId('author_id')->constrained('users')->cascadeOnDelete();$t->text('body');$t->timestamps();}); }
+ public function down():void{Schema::dropIfExists('dispute_messages');Schema::dropIfExists('return_histories');} };

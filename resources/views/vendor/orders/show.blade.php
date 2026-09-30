@@ -33,6 +33,7 @@
 @section('title', $vendorOrder->vendor_order_number)
 
 @section('content')
+    <div class="mb-4"><x-button :href="route('vendor.documents.seller', $vendorOrder)" variant="secondary">{{ __('documents.download_seller') }}</x-button></div>
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <x-badge :tone="$vendorOrder->status->badgeTone()">{{ $vendorOrder->status->label() }}</x-badge>
@@ -128,6 +129,12 @@
                 <h2 class="font-semibold text-neutral-950">Seller Total</h2>
                 <div class="mt-4 grid gap-3 text-sm">
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">Items</span><span class="font-medium">{{ Money::format($vendorOrder->items_subtotal) }}</span></div>
+                    @if ($vendorOrder->discount_total > 0)
+                        <div class="flex justify-between gap-4 text-emerald-700"><span>Customer coupon discount</span><span class="font-medium">-{{ Money::format($vendorOrder->discount_total) }}</span></div>
+                    @endif
+                    @if ($vendorOrder->vendor_discount_total > 0)
+                        <div class="flex justify-between gap-4 text-red-700"><span>Vendor-funded discount</span><span class="font-medium">-{{ Money::format($vendorOrder->vendor_discount_total) }}</span></div>
+                    @endif
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">{{ $vendorOrder->shipping_method_name }}</span><span class="font-medium">{{ $vendorOrder->shipping_total === 0 ? 'Free' : Money::format($vendorOrder->shipping_total) }}</span></div>
                     @if (($vendorRefundedAmount ?? 0) > 0)
                         <div class="flex justify-between gap-4 text-emerald-700"><span>Refund attributed</span><span class="font-medium">-{{ Money::format($vendorRefundedAmount) }}</span></div>
@@ -144,12 +151,12 @@
 
             @php
                 $sellerRefundAllocations = $vendorOrder->refundAllocations
-                    ->filter(fn ($allocation) => $allocation->refund?->status === RefundStatus::Succeeded);
+                    ->filter(fn ($allocation) => $allocation->refund?->economicsRecognized());
             @endphp
             @if ($sellerRefundAllocations->isNotEmpty())
                 <section class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft">
                     <h2 class="font-semibold text-neutral-950">Refund Attribution</h2>
-                    <p class="mt-2 text-sm leading-6 text-neutral-600">These refunds are attributed to this seller order. Liability and payout treatment are handled by future financial modules.</p>
+                    <p class="mt-2 text-sm leading-6 text-neutral-600">These refunds are attributed to this seller order. Refund liability and commission credits are recorded in your earnings ledger; paid payouts remain unchanged.</p>
                     <div class="mt-4 space-y-3 text-sm">
                         @foreach ($sellerRefundAllocations as $allocation)
                             <div class="rounded-md border border-neutral-200 bg-neutral-50 p-3">
@@ -163,7 +170,7 @@
                                             Seller adjustment
                                         @endif
                                     </span>
-                                    <span class="font-semibold text-emerald-700">{{ Money::format($allocation->amount) }}</span>
+                                    <span class="font-semibold text-emerald-700">{{ Money::format((int)($allocation->seller_amount ?? $allocation->amount), $vendorOrder->order->currency) }}</span>
                                 </div>
                                 @if ($allocation->quantity)
                                     <p class="mt-1 text-xs text-neutral-500">Qty refunded: {{ $allocation->quantity }}</p>

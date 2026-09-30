@@ -9,6 +9,7 @@ enum VendorLedgerEntryType: string
     case Refund = 'refund';
     case CommissionRefund = 'commission_refund';
     case Payout = 'payout';
+    case Promotion = 'promotion';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum VendorLedgerEntryType: string
             self::Refund => 'Refund Debit',
             self::CommissionRefund => 'Commission Refund Credit',
             self::Payout => 'Payout Debit',
+            self::Promotion => 'Promotion Debit',
         };
     }
 }

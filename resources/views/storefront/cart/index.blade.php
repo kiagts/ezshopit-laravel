@@ -1004,6 +1004,56 @@
                                 </span>
                             </div>
 
+                            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                                @if ($promotion_evaluation['promotion'])
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase text-neutral-500">Coupon</p>
+                                            <p class="mt-1 font-semibold text-neutral-950">{{ $promotion_evaluation['promotion']->code }}</p>
+                                            @if (! $promotion_evaluation['valid'] && $promotion_evaluation['message'])
+                                                <p class="mt-1 text-xs leading-5 text-red-700">{{ $promotion_evaluation['message'] }}</p>
+                                            @endif
+                                        </div>
+                                        <form method="POST" action="{{ route('cart.promotion.destroy') }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-700">Remove</button>
+                                        </form>
+                                    </div>
+                                @endif
+
+                                <form method="POST" action="{{ route('cart.promotion.store') }}" class="{{ $promotion_evaluation['promotion'] ? 'mt-4' : '' }} flex gap-2">
+                                    @csrf
+                                    <input
+                                        type="text"
+                                        name="code"
+                                        value="{{ old('code') }}"
+                                        placeholder="Coupon code"
+                                        class="min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                                    >
+                                    <button type="submit" class="inline-flex h-10 items-center justify-center rounded-md border border-neutral-950 bg-neutral-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800">Apply</button>
+                                </form>
+                                @error('code')
+                                    <p class="mt-2 text-sm text-red-700">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            @if ($discount_total > 0)
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                >
+                                    <span class="text-neutral-600">
+                                        Coupon Discount
+                                    </span>
+
+                                    <span
+                                        class="font-semibold text-emerald-700"
+                                    >
+                                        -{{ $discount_total_formatted }}
+                                    </span>
+                                </div>
+                            @endif
+
 
                             <div
                                 class="flex items-center justify-between gap-4"
@@ -1051,7 +1101,7 @@
                             <span
                                 class="text-xl font-semibold text-emerald-800"
                             >
-                                {{ $subtotal_formatted }}
+                                {{ $total_after_discount_formatted }}
                             </span>
 
                         </div>

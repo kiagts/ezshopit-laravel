@@ -6,6 +6,7 @@ use App\Enums\ProductReviewStatus;
 use App\Models\OrderItem;
 use App\Models\ProductReview;
 use App\Models\User;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\Reviews\ReviewEligibilityService;
 use App\Services\Reviews\ReviewerName;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,12 @@ class CreateProductReview
     public function __construct(
         private readonly ReviewEligibilityService $eligibility,
         private readonly ReviewerName $reviewerName,
+        private readonly MarketplaceNotifier $notifier,
     ) {}
 
     public function handle(User $user, OrderItem $item, array $data): ProductReview
     {
-        return DB::transaction(function () use ($user, $item, $data): ProductReview {
+        $review = DB::transaction(function () use ($user, $item, $data): ProductReview {
             $item = OrderItem::query()
                 ->with(['vendorOrder.order', 'product'])
                 ->lockForUpdate()
@@ -52,5 +54,9 @@ class CreateProductReview
                 'submitted_at' => now(),
             ]);
         });
+
+        $this->notifier->reviewSubmitted($review);
+
+        return $review;
     }
 }

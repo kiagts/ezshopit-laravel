@@ -1,6 +1,8 @@
 @extends('layouts.admin')
 
 @php
+    use App\Enums\OrderStatus;
+    use App\Enums\PaymentStatus;
     use App\Support\Money;
 @endphp
 
@@ -13,24 +15,43 @@
             <h1 class="mt-4 text-2xl font-semibold tracking-normal text-neutral-950">Marketplace Orders</h1>
             <p class="mt-2 text-sm leading-6 text-neutral-600">Read-only visibility into parent orders and seller splits.</p>
         </div>
-        <form method="GET" action="{{ route('admin.orders.index') }}" class="flex gap-2">
+        <form method="GET" action="{{ route('admin.orders.index') }}" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_10rem_10rem_12rem_auto]">
             <x-input name="q" :value="$filters['q']" placeholder="Search orders or customers" />
+            <select name="status" class="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <option value="">Order status</option>
+                @foreach (OrderStatus::cases() as $status)
+                    <option value="{{ $status->value }}" @selected($filters['status'] === $status->value)>{{ $status->label() }}</option>
+                @endforeach
+            </select>
+            <select name="payment_status" class="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <option value="">Payment status</option>
+                @foreach (PaymentStatus::cases() as $status)
+                    <option value="{{ $status->value }}" @selected($filters['payment_status'] === $status->value)>{{ $status->label() }}</option>
+                @endforeach
+            </select>
+            <select name="vendor_id" class="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <option value="">All vendors</option>
+                @foreach ($vendors as $vendor)
+                    <option value="{{ $vendor->id }}" @selected((string) $filters['vendor_id'] === (string) $vendor->id)>{{ $vendor->display_name }}</option>
+                @endforeach
+            </select>
             <x-button type="submit" variant="secondary">Search</x-button>
         </form>
     </div>
 
     <div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-soft">
-        <div class="hidden grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_auto] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-neutral-500 md:grid">
+        <div class="hidden grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_auto] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-neutral-500 md:grid">
             <span>Order</span>
             <span>Customer</span>
             <span>Status</span>
+            <span>Payment</span>
             <span>Sellers</span>
             <span>Total</span>
             <span></span>
         </div>
         <div class="divide-y divide-neutral-100">
             @forelse ($orders as $order)
-                <article class="grid gap-4 px-5 py-4 md:grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center">
+                <article class="grid gap-4 px-5 py-4 md:grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_auto] md:items-center">
                     <div>
                         <p class="font-semibold text-neutral-950">{{ $order->order_number }}</p>
                         <p class="mt-1 text-sm text-neutral-500">{{ $order->placed_at?->format('M j, Y') }}</p>
@@ -40,8 +61,9 @@
                         <p class="mt-1 text-sm text-neutral-500">{{ $order->user->email }}</p>
                     </div>
                     <x-badge :tone="$order->status->badgeTone()">{{ $order->status->label() }}</x-badge>
+                    <x-badge :tone="$order->payment_status->badgeTone()">{{ $order->payment_status->label() }}</x-badge>
                     <p class="text-sm text-neutral-600">{{ $order->vendor_orders_count }}</p>
-                    <p class="font-semibold text-neutral-950">{{ Money::format($order->grand_total) }}</p>
+                    <p class="font-semibold text-neutral-950">{{ Money::format($order->grand_total, $order->currency) }}</p>
                     <x-button :href="route('admin.orders.show', $order)" variant="secondary" size="sm">View</x-button>
                 </article>
             @empty

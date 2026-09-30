@@ -6,6 +6,8 @@ return [
     'currency' => [
         'code' => env('MARKETPLACE_CURRENCY', 'USD'),
         'minor_unit' => (int) env('MARKETPLACE_CURRENCY_MINOR_UNIT', 2),
+        // Launch roadmap metadata; current checkout remains single-currency.
+        'supported' => ['USD' => ['minor_unit' => 2], 'PKR' => ['minor_unit' => 2], 'EUR' => ['minor_unit' => 2], 'GBP' => ['minor_unit' => 2]],
     ],
 
     'product_media' => [

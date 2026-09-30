@@ -1,0 +1,4 @@
+<?php
+namespace App\Services;
+use App\Models\Market; use App\Support\Currency; use Illuminate\Http\Request;
+class CurrencyContext { public function current(Request $r,?Market $market=null):Currency{$market=$market??app(MarketService::class)->current($r);$code=$r->session()->get('currency_code');$supported=config('marketplace.currency.supported',[]);if(!$code||!isset($supported[$code]))$code=$market?->default_currency_code?:config('marketplace.currency.code','USD');$meta=$supported[$code]??['minor_unit'=>config('marketplace.currency.minor_unit',2)];return Currency::from($code,(int)$meta['minor_unit']);} public function select(Request $r,string $code,?Market $market=null):bool{$market=$market??app(MarketService::class)->current($r);$supported=config('marketplace.currency.supported',[]);if(!$market||!isset($supported[$code]))return false;$r->session()->put('currency_code',strtoupper($code));return true;} }

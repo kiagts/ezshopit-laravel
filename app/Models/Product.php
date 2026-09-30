@@ -31,6 +31,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id',
+        'tax_class_id',
         'brand_id',
         'name',
         'slug',
@@ -38,6 +39,7 @@ class Product extends Model
         'status',
         'short_description',
         'description',
+        'translations',
     ];
 
     protected function casts(): array
@@ -53,8 +55,13 @@ class Product extends Model
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'published_at' => 'datetime',
+            'translations' => 'array',
         ];
     }
+
+    public function getLocalizedNameAttribute(): string { return data_get($this->translations, app()->getLocale().'.name', $this->name); }
+    public function getLocalizedDescriptionAttribute(): ?string { return data_get($this->translations, app()->getLocale().'.description', $this->description); }
+    public function taxClass(): \Illuminate\Database\Eloquent\Relations\BelongsTo { return $this->belongsTo(\App\Models\TaxClass::class); }
 
     public function vendor(): BelongsTo
     {
@@ -188,11 +195,7 @@ class Product extends Model
     public function storefrontPrice(): array
     {
         $variants = $this->activeVariantsForDisplay();
-        $prices = $variants->map(fn (ProductVariant $variant): array => [
-            'base' => $variant->base_price,
-            'effective' => $variant->sale_price ?? $variant->base_price,
-            'sale' => $variant->sale_price,
-        ])->values();
+        $prices = $variants->map(fn (ProductVariant $variant): array => $variant->storefrontPrice())->values();
 
         if ($prices->isEmpty()) {
             return ['effective' => null, 'base' => null, 'sale' => null, 'from' => false, 'discount' => null];

@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ request()->attributes->get('language')?->direction ?? 'ltr' }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>@yield('title', config('marketplace.name')) | {{ config('marketplace.name') }}</title>
-        <meta name="description" content="@yield('description', 'A modern multi-vendor marketplace platform.')">
+        @php($siteSettings=app(\App\Services\SettingsService::class))
+        <title>@yield('title', $siteSettings->get('seo.default_title', $siteSettings->get('general.marketplace_name', config('marketplace.name'))))</title>
+        <meta name="description" content="@yield('description', $siteSettings->get('seo.default_description', 'A modern multi-vendor marketplace platform.'))">
         @stack('head')
 
         <!-- Favicon -->

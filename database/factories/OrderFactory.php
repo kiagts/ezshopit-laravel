@@ -32,6 +32,7 @@ class OrderFactory extends Factory
             'payment_status' => PaymentStatus::Pending,
             'currency' => Money::currencyCode(),
             'items_subtotal' => $itemsSubtotal,
+            'discount_total' => 0,
             'shipping_total' => $shippingTotal,
             'grand_total' => $itemsSubtotal + $shippingTotal,
             'shipping_first_name' => fake()->firstName(),

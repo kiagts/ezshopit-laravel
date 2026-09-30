@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentWebhookEvent;
 use App\Models\Refund;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\Payments\StripePaymentProvider;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,7 @@ class HandleStripeWebhook
         private readonly UpdatePaymentStatus $updatePaymentStatus,
         private readonly MarkRefundSucceeded $markRefundSucceeded,
         private readonly MarkRefundFailed $markRefundFailed,
+        private readonly MarketplaceNotifier $notifier,
     ) {
     }
 
@@ -215,6 +217,7 @@ class HandleStripeWebhook
         ])->save();
 
         $payment->order()->update(['payment_status' => PaymentStatus::Paid]);
+        $this->notifier->paymentRequiresReview($payment->refresh());
     }
 
     private function handleProcessing(Payment $payment, PaymentAttempt $attempt, object $intent): void
@@ -245,6 +248,8 @@ class HandleStripeWebhook
             $payment->forceFill(['status' => PaymentStatus::Pending])->save();
             $payment->order()->update(['payment_status' => PaymentStatus::Pending]);
         }
+
+        $this->notifier->paymentChanged($payment->refresh(), PaymentStatus::Failed);
     }
 
     private function handleCancelled(Payment $payment, PaymentAttempt $attempt, object $intent): void

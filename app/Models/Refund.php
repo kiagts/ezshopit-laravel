@@ -15,6 +15,7 @@ class Refund extends Model
     use HasFactory;
 
     protected $fillable = [
+        'return_request_id', 'vendor_order_id', 'idempotency_key', 'request_hash', 'economics_posted_at', 'processed_by',
         'refund_number',
         'order_id',
         'payment_id',
@@ -37,6 +38,7 @@ class Refund extends Model
     protected function casts(): array
     {
         return [
+            'economics_posted_at' => 'datetime',
             'status' => RefundStatus::class,
             'amount' => 'integer',
             'requested_at' => 'datetime',
@@ -70,4 +72,8 @@ class Refund extends Model
     {
         return $this->hasMany(RefundAllocation::class);
     }
+
+    public function fundingAllocations(): HasMany { return $this->hasMany(RefundFundingAllocation::class); }
+    public function returnRequest(): BelongsTo { return $this->belongsTo(ReturnRequest::class); }
+    public function economicsRecognized(): bool { return $this->economics_posted_at !== null || $this->status === RefundStatus::Succeeded; }
 }

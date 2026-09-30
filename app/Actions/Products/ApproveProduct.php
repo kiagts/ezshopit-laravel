@@ -5,12 +5,16 @@ namespace App\Actions\Products;
 use App\Enums\ProductApprovalStatus;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\ProductSubmissionValidator;
 use Illuminate\Validation\ValidationException;
 
 class ApproveProduct
 {
-    public function __construct(private readonly ProductSubmissionValidator $validator) {}
+    public function __construct(
+        private readonly ProductSubmissionValidator $validator,
+        private readonly MarketplaceNotifier $notifier,
+    ) {}
 
     public function handle(Product $product, User $admin): Product
     {
@@ -33,6 +37,8 @@ class ApproveProduct
             'rejected_by' => null,
             'published_at' => $product->published_at ?? now(),
         ])->save();
+
+        $this->notifier->productStatusChanged($product, 'approved');
 
         return $product;
     }

@@ -15,6 +15,17 @@ class VendorLedgerEntry extends Model
 
     protected $guarded = ['*'];
 
+    public function newEloquentBuilder($query): \App\Models\Builders\VendorLedgerEntryBuilder
+    {
+        return new \App\Models\Builders\VendorLedgerEntryBuilder($query);
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(fn () => throw new \LogicException('Vendor ledger entries are immutable.'));
+        static::deleting(fn () => throw new \LogicException('Vendor ledger entries are immutable.'));
+    }
+
     protected function casts(): array
     {
         return [
@@ -75,3 +86,4 @@ class VendorLedgerEntry extends Model
         return $this->available_at === null || $this->available_at->isPast();
     }
 }
+

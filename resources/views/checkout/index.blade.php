@@ -4,7 +4,7 @@
     use App\Enums\PaymentMethod;
     use App\Support\Money;
 
-    $usesCardPayment = $selected_payment_method?->method === PaymentMethod::Card;
+    $usesCardPayment = $selected_payment_method?->method === PaymentMethod::Card && $walletPreview < $current_total;
 @endphp
 
 @section('title', 'Checkout')
@@ -277,6 +277,27 @@
                         <span class="text-neutral-600">Items subtotal</span>
                         <span class="font-semibold text-neutral-950">{{ $subtotal_formatted }}</span>
                     </div>
+                    @if (($tax_total ?? 0) > 0)<div class="flex items-center justify-between py-2"><span class="text-neutral-600">Tax</span><span class="font-semibold text-neutral-950">{{ $tax_total_formatted }}</span></div>@endif
+                    @if ($promotion_evaluation['promotion'])
+                        <div class="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase text-neutral-500">Coupon</p>
+                                    <p class="mt-1 font-semibold text-neutral-950">{{ $promotion_evaluation['promotion']->code }}</p>
+                                    @if (! $promotion_evaluation['valid'] && $promotion_evaluation['message'])
+                                        <p class="mt-1 text-xs leading-5 text-red-700">{{ $promotion_evaluation['message'] }}</p>
+                                    @endif
+                                </div>
+                                <a href="{{ route('cart.index') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">Edit</a>
+                            </div>
+                        </div>
+                    @endif
+                    @if ($discount_total > 0)
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-neutral-600">Coupon discount</span>
+                            <span class="font-semibold text-emerald-700">-{{ $discount_total_formatted }}</span>
+                        </div>
+                    @endif
                     @if ($selectedAddress)
                         <div class="space-y-2 border-t border-neutral-100 pt-4">
                             <div class="flex items-center justify-between gap-4">
@@ -298,8 +319,28 @@
                     @endif
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-neutral-600">Current total</span>
-                        <span class="text-lg font-semibold text-neutral-950">{{ $current_total_formatted }}</span>
+                        <span class="text-lg font-semibold text-neutral-950">{{ Money::format($current_total, $walletCurrency) }}</span>
                     </div>
+                    <p class="text-sm text-neutral-600">Tax included: {{ Money::format($tax_total ?? 0, $walletCurrency) }}</p>
+                    <form method="POST" action="{{ route('checkout.wallet.update') }}" class="space-y-3 rounded-lg border p-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="use_wallet" value="0">
+                        <label class="flex min-h-11 items-center gap-3">
+                            <input type="checkbox" name="use_wallet" value="1" @checked($walletSelected) @disabled(!$walletAvailable)>
+                            Use wallet credit
+                        </label>
+                        <p>Balance: {{ Money::format($walletBalance, $walletCurrency) }}{{ $walletAvailable ? '' : ' (unavailable)' }}</p>
+                        <button class="min-h-11 rounded border px-4" type="submit">Update wallet choice</button>
+                        <p>Wallet payment: {{ Money::format($walletPreview, $walletCurrency) }}</p>
+                        <p class="font-semibold">Remaining payment: {{ Money::format($current_total - $walletPreview, $walletCurrency) }}</p>
+                        <p class="text-xs text-neutral-500">Credit is applied when you place the order. The balance is checked again then.</p>
+                    </form>
+                    @if(session('checkout.gift_card'))<p class="rounded border border-emerald-200 bg-emerald-50 p-3">Gift card applied: {{ Money::format($giftCardPreview, $walletCurrency) }} · Remaining after stored value: {{ Money::format($current_total - $walletPreview - $giftCardPreview, $walletCurrency) }}</p>@endif
+                    <form method="POST" action="{{ route('checkout.gift-card.update') }}" class="space-y-3 rounded-lg border p-4">
+                        @csrf @method('PUT')
+                        <label>Gift card code<input name="gift_card" value="{{ session('checkout.gift_card') }}" maxlength="40" class="mt-1 block w-full rounded border p-3" placeholder="Enter gift card code"></label>
+                        <button class="min-h-11 rounded border px-4" type="submit">Apply gift card</button>
+                    </form>
                     <div class="flex items-start justify-between gap-4 border-t border-neutral-100 pt-4">
                         <span class="text-neutral-600">Payment</span>
                         <span class="text-right font-semibold text-neutral-950">{{ $selected_payment_method?->label ?? '-' }}</span>
@@ -308,7 +349,7 @@
                         @if ($usesCardPayment)
                             Card payment is collected securely by Stripe after the order is created and stock is reserved.
                         @else
-                            Current total includes items and selected shipping only. Payment is collected on delivery.
+                            {{ $walletPreview >= $current_total && $walletPreview > 0 ? 'Your wallet will fully fund this order.' : 'Any remaining amount is collected on delivery.' }}
                         @endif
                     </p>
                     @if ($checkoutReady)
@@ -346,14 +387,14 @@
                                 @if ($usesCardPayment)
                                     Your card details are entered only in Stripe's secure payment element.
                                 @else
-                                    This creates a pending order and reserves stock for cash collection on delivery.
+                                    Your order reserves stock and records the selected payment funding.
                                 @endif
                             </p>
                         </form>
                     @elseif ($selectedAddress)
                         <p class="rounded-md bg-amber-50 p-3 text-amber-900">Resolve delivery and payment selections before placing your order.</p>
                     @endif
-                    @foreach (['cart', 'address', 'shipping', 'payment_method', 'idempotency_key'] as $errorKey)
+                    @foreach (['cart', 'address', 'shipping', 'payment_method', 'wallet', 'idempotency_key'] as $errorKey)
                         @error($errorKey)
                             <p class="text-sm font-medium text-red-700">{{ $message }}</p>
                         @enderror

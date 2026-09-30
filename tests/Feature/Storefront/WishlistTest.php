@@ -7,8 +7,10 @@ use App\Enums\ProductStatus;
 use App\Enums\ProductType;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
+use App\Enums\HomepageSectionType;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\HomepageSection;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Product;
@@ -177,6 +179,15 @@ class WishlistTest extends TestCase
         $savedProduct = $this->createPublicProduct('Saved State Product');
         $unsavedProduct = $this->createPublicProduct('Unsaved State Product');
         WishlistItem::factory()->create(['user_id' => $customer->id, 'product_id' => $savedProduct->id]);
+        HomepageSection::query()->create([
+            'key' => 'products',
+            'type' => HomepageSectionType::Products,
+            'name' => 'Products',
+            'title' => 'Products',
+            'is_enabled' => true,
+            'sort_order' => 10,
+            'settings' => ['source' => 'latest', 'limit' => 8],
+        ]);
 
         $this->actingAs($customer)
             ->get(route('storefront.products.show', $savedProduct))

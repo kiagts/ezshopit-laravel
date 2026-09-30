@@ -28,6 +28,7 @@ class Category extends Model
         'sort_order',
         'seo_title',
         'seo_description',
+        'translations',
     ];
 
     protected function casts(): array
@@ -35,8 +36,12 @@ class Category extends Model
         return [
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'translations' => 'array',
         ];
     }
+
+    public function getLocalizedNameAttribute(): string { return data_get($this->translations, app()->getLocale().'.name', $this->name); }
+    public function getLocalizedDescriptionAttribute(): ?string { return data_get($this->translations, app()->getLocale().'.description', $this->description); }
 
     public function parent(): BelongsTo
     {

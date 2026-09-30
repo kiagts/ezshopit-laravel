@@ -16,6 +16,7 @@ class Cart extends Model
     protected $fillable = [
         'user_id',
         'token',
+        'promotion_id',
     ];
 
     public function user(): BelongsTo
@@ -26,5 +27,10 @@ class Cart extends Model
     public function items(): HasMany
     {
         return $this->hasMany(CartItem::class);
+    }
+
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 }

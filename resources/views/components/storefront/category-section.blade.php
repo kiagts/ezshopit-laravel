@@ -18,67 +18,66 @@
 @endphp
 
 
-@if ($categories->isNotEmpty())
+<section
+    {{ $attributes->class([
+        'bg-white py-8 sm:py-10'
+    ]) }}
+    data-category-section
+>
 
-    <section
-        {{ $attributes->class([
-            'bg-white py-8 sm:py-10'
-        ]) }}
-        data-category-section
-    >
+    <x-container>
 
-        <x-container>
+        {{-- ========================================================= --}}
+        {{-- HEADER --}}
+        {{-- ========================================================= --}}
+        <div class="mb-5 flex items-center justify-between gap-4">
 
-            {{-- ========================================================= --}}
-            {{-- HEADER --}}
-            {{-- ========================================================= --}}
-            <div class="mb-5 flex items-center justify-between gap-4">
+            <h2
+                class="text-xl font-bold tracking-tight text-neutral-950 sm:text-2xl"
+            >
+                {{ $title }}
+            </h2>
 
-                <h2
-                    class="text-xl font-bold tracking-tight text-neutral-950 sm:text-2xl"
+
+            @if ($viewAllUrl)
+
+                <a
+                    href="{{ $viewAllUrl }}"
+                    class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 transition hover:text-emerald-800"
                 >
-                    {{ $title }}
-                </h2>
+                    <span class="hidden sm:inline">
+                        View all categories
+                    </span>
 
+                    <span class="sm:hidden">
+                        View all
+                    </span>
 
-                @if ($viewAllUrl)
-
-                    <a
-                        href="{{ $viewAllUrl }}"
-                        class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 transition hover:text-emerald-800"
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-4 w-4"
                     >
-                        <span class="hidden sm:inline">
-                            View all categories
-                        </span>
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M5 12h14M13 6l6 6-6 6"
+                        />
+                    </svg>
+                </a>
 
-                        <span class="sm:hidden">
-                            View all
-                        </span>
+            @endif
 
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            class="h-4 w-4"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M5 12h14M13 6l6 6-6 6"
-                            />
-                        </svg>
-                    </a>
-
-                @endif
-
-            </div>
+        </div>
 
 
-            {{-- ========================================================= --}}
-            {{-- CATEGORY TRACK --}}
-            {{-- ========================================================= --}}
+        {{-- ========================================================= --}}
+        {{-- CATEGORY TRACK --}}
+        {{-- ========================================================= --}}
+        @if ($categories->isNotEmpty())
             <div
                 class="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 data-category-track
@@ -105,9 +104,13 @@
                 @endforeach
 
             </div>
+        @else
+            <x-empty-state
+                title="Categories are being prepared."
+                description="Fresh departments will appear here as the marketplace catalog grows."
+            />
+        @endif
 
-        </x-container>
+    </x-container>
 
-    </section>
-
-@endif
+</section>

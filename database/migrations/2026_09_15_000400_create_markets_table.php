@@ -1,0 +1,3 @@
+<?php
+use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema;
+return new class extends Migration {public function up():void{Schema::create('markets',function(Blueprint $t){$t->id();$t->string('name');$t->string('code',32)->unique();$t->char('country_code',2);$t->char('default_currency_code',3);$t->boolean('is_active')->default(true);$t->boolean('is_default')->default(false);$t->unsignedInteger('sort_order')->default(0);$t->timestamps();$t->index(['is_active','is_default']);});}public function down():void{Schema::dropIfExists('markets');}};

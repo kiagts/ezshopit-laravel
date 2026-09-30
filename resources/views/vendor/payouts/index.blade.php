@@ -7,6 +7,7 @@
 @section('title', 'Payouts')
 
 @section('content')
+<form method="GET" class="mb-5 flex items-center gap-3"><label for="payout-currency">Currency</label><select id="payout-currency" name="currency" class="min-h-11 rounded border px-3">@foreach($currencies as $code)<option @selected($currency===$code)>{{ $code }}</option>@endforeach</select><x-button type="submit">Apply</x-button></form>
     <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <x-badge tone="brand">Payouts</x-badge>
@@ -24,7 +25,7 @@
         @foreach ([['Available Balance', $balance->availableLedgerBalance], ['Reserved for Payout', $balance->activePayoutReserved], ['Requestable Balance', $balance->requestableBalance], ['Minimum Payout', $balance->minimumPayout], ['Total Paid Out', $balance->paidOutTotal]] as [$label, $amount])
             <x-card>
                 <p class="text-xs font-semibold uppercase text-neutral-500">{{ $label }}</p>
-                <p class="mt-3 text-xl font-semibold text-neutral-950">{{ Money::format($amount, $balance->currency) }}</p>
+                <p class="mt-3 text-xl font-semibold text-neutral-950">{{ Money::formatWithPrecision($amount, $balance->currency, $precision) }}</p>
             </x-card>
         @endforeach
     </div>
@@ -39,7 +40,7 @@
                     <article class="grid gap-3 px-5 py-4 text-sm md:grid-cols-[11rem_1fr_8rem_8rem_7rem] md:items-center">
                         <a href="{{ route('vendor.payouts.show', $payout) }}" class="font-semibold text-brand-700 hover:text-brand-900">{{ $payout->payout_number }}</a>
                         <span class="text-neutral-600">{{ $payout->methodLabel() }} · {{ $payout->maskedDestinationSnapshot() }}</span>
-                        <span class="font-semibold text-neutral-950">{{ Money::format($payout->amount, $payout->currency) }}</span>
+                        <span class="font-semibold text-neutral-950">{{ Money::formatWithPrecision($payout->amount, $payout->currency, $precision) }}</span>
                         <x-badge :tone="$payout->status->badgeTone()">{{ $payout->status->label() }}</x-badge>
                         <span class="text-xs text-neutral-500">{{ $payout->requested_at->format('M j, Y') }}</span>
                     </article>
@@ -54,14 +55,14 @@
                 <x-card>
                     <x-badge :tone="$activePayout->status->badgeTone()">{{ $activePayout->status->label() }}</x-badge>
                     <h2 class="mt-4 text-base font-semibold text-neutral-950">Payout in Progress</h2>
-                    <p class="mt-2 text-sm text-neutral-600">{{ $activePayout->payout_number }} reserves {{ Money::format($activePayout->amount, $activePayout->currency) }}.</p>
+                    <p class="mt-2 text-sm text-neutral-600">{{ $activePayout->payout_number }} reserves {{ Money::formatWithPrecision($activePayout->amount, $activePayout->currency, $precision) }}.</p>
                     <x-button :href="route('vendor.payouts.show', $activePayout)" variant="secondary" class="mt-4 w-full">View Request</x-button>
                 </x-card>
             @endif
 
             <x-card>
                 <h2 class="text-base font-semibold text-neutral-950">Request Payout</h2>
-                <p class="mt-2 text-sm text-neutral-600">Available to request: {{ Money::format($balance->requestableBalance, $balance->currency) }}</p>
+                <p class="mt-2 text-sm text-neutral-600">Available to request: {{ Money::formatWithPrecision($balance->requestableBalance, $balance->currency, $precision) }}</p>
 
                 @if (! auth()->user()->vendor?->isApproved())
                     <x-alert type="warning" class="mt-4">Your vendor account must be approved before requesting payouts.</x-alert>
@@ -71,8 +72,8 @@
                     <x-alert type="warning" class="mt-4">Add a payout method before requesting funds.</x-alert>
                 @else
                     <form method="POST" action="{{ route('vendor.payouts.store') }}" class="mt-5 space-y-4">
-                        @csrf
-                        <x-input label="Amount" name="amount" value="{{ old('amount') }}" placeholder="{{ Money::input($balance->requestableBalance) }}" inputmode="decimal" required />
+                        @csrf <input type="hidden" name="currency" value="{{ $currency }}">
+                        <x-input label="Amount" name="amount" value="{{ old('amount') }}" placeholder="Amount in {{ $currency }}" inputmode="decimal" required />
                         <label class="block">
                             <span class="mb-2 block text-sm font-medium text-neutral-800">Payout method</span>
                             <select name="payout_method_id" class="block h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100">
@@ -95,3 +96,4 @@
 
     <div class="mt-6">{{ $payouts->links() }}</div>
 @endsection
+

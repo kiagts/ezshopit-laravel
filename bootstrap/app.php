@@ -7,6 +7,8 @@ use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureShopper;
 use App\Http\Middleware\EnsureVendorIsApproved;
 use App\Http\Middleware\RedirectAuthenticatedUsersToDashboard;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetRequestLanguage;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->appendToGroup('web', SecurityHeaders::class);
+        $middleware->appendToGroup('web', SetRequestLanguage::class);
         $middleware->validateCsrfTokens(except: [
             'webhooks/stripe',
         ]);

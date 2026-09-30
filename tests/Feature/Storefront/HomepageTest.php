@@ -7,11 +7,13 @@ use App\Enums\ProductStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Models\Category;
+use App\Models\HomepageSection;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Enums\HomepageSectionType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +23,9 @@ class HomepageTest extends TestCase
 
     public function test_homepage_renders_for_guests(): void
     {
+        Category::factory()->create(['name' => 'Starter Category']);
+        $this->homepageSection('categories', HomepageSectionType::Categories, 'Shop by Category', ['source' => 'latest', 'limit' => 8]);
+
         $this->get(route('home'))
             ->assertOk()
             ->assertSeeText('Shop by Category')
@@ -43,6 +48,7 @@ class HomepageTest extends TestCase
         $visible->variants()->update(['is_active' => false]);
 
         $this->createPublicProduct('Visible Product With Variant');
+        $this->homepageSection('products', HomepageSectionType::Products, 'Featured Products', ['source' => 'latest', 'limit' => 8]);
 
         $this->get(route('home'))
             ->assertOk()
@@ -74,6 +80,7 @@ class HomepageTest extends TestCase
         Vendor::factory()->approved()->create(['display_name' => 'Approved Storefront Seller']);
         Vendor::factory()->create(['display_name' => 'Draft Storefront Seller']);
         Vendor::factory()->state(['status' => VendorStatus::Suspended])->create(['display_name' => 'Suspended Storefront Seller']);
+        $this->homepageSection('stores', HomepageSectionType::Vendors, 'Featured Stores', ['source' => 'latest', 'limit' => 8]);
 
         $this->get(route('home'))
             ->assertOk()
@@ -95,6 +102,7 @@ class HomepageTest extends TestCase
             'reserved' => 41,
             'low_stock_threshold' => 5,
         ]);
+        $this->homepageSection('stock-products', HomepageSectionType::Products, 'Featured Products', ['source' => 'latest', 'limit' => 8]);
 
         $this->get(route('home'))
             ->assertOk()
@@ -188,5 +196,21 @@ class HomepageTest extends TestCase
         ], $inventoryState));
 
         return $product;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function homepageSection(string $key, HomepageSectionType $type, string $title, array $settings): HomepageSection
+    {
+        return HomepageSection::query()->create([
+            'key' => $key,
+            'type' => $type,
+            'name' => $title,
+            'title' => $title,
+            'is_enabled' => true,
+            'sort_order' => 10,
+            'settings' => $settings,
+        ]);
     }
 }

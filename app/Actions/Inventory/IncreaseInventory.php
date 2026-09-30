@@ -13,12 +13,12 @@ class IncreaseInventory
 {
     use MutatesInventory;
 
-    public function handle(ProductVariant $variant, int $quantity, ?User $actor, ?string $reason = null): Inventory
+    public function handle(ProductVariant $variant, int $quantity, ?User $actor, ?string $reason = null, ?string $referenceType = null, ?int $referenceId = null): Inventory
     {
         $this->ensurePositiveQuantity($quantity);
         $this->ensureVariantCanBeMutated($variant);
 
-        return DB::transaction(function () use ($variant, $quantity, $actor, $reason): Inventory {
+        return DB::transaction(function () use ($variant, $quantity, $actor, $reason, $referenceType, $referenceId): Inventory {
             app(EnsureInventoryExists::class)->handle($variant);
 
             $inventory = $this->lockedInventory($variant);
@@ -35,6 +35,8 @@ class IncreaseInventory
                 'after_quantity' => $after,
                 'reason' => $reason,
                 'created_by' => $actor?->id,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
             ]);
 
             return $inventory->refresh();

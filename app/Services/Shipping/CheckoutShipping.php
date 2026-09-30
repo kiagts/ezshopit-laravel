@@ -33,8 +33,8 @@ class CheckoutShipping
                 'shipping_groups' => $groups->map(fn (array $group): array => $this->emptyGroup($group, 'Select a delivery address to see available delivery options.')),
                 'shipping_total' => 0,
                 'shipping_total_formatted' => Money::format(0),
-                'current_total' => $cartEvaluation['subtotal'],
-                'current_total_formatted' => Money::format($cartEvaluation['subtotal']),
+                'current_total' => $cartEvaluation['total_after_discount'],
+                'current_total_formatted' => Money::format($cartEvaluation['total_after_discount']),
                 'shipping_ready' => false,
                 'has_shipping_blocking_issues' => true,
             ];
@@ -85,7 +85,7 @@ class CheckoutShipping
         $this->checkoutSession->syncShippingMethods($request, $vendorIds->all(), $resolvedSelections);
 
         $hasIssues = $shippingGroups->contains(fn (array $group): bool => $group['shipping_blocking_issue']);
-        $currentTotal = $cartEvaluation['subtotal'] + $shippingTotal;
+        $currentTotal = $cartEvaluation['total_after_discount'] + $shippingTotal;
 
         return [
             'shipping_groups' => $shippingGroups,

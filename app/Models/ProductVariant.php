@@ -33,6 +33,7 @@ class ProductVariant extends Model
         'name',
         'base_price',
         'sale_price',
+        'currency_code',
         'is_active',
         'is_default',
         'combination_key',
@@ -44,6 +45,7 @@ class ProductVariant extends Model
         return [
             'base_price' => 'integer',
             'sale_price' => 'integer',
+            'currency_code' => 'string',
             'is_active' => 'boolean',
             'is_default' => 'boolean',
             'sort_order' => 'integer',
@@ -133,14 +135,17 @@ class ProductVariant extends Model
 
     public function storefrontPrice(): array
     {
-        $discount = $this->sale_price && $this->base_price > 0
-            ? (int) round((($this->base_price - $this->sale_price) / $this->base_price) * 100)
+        $target = function_exists('request') && request()->hasSession() ? app(\App\Services\CurrencyContext::class)->current(request())->code : ($this->currency_code ?: \App\Support\Money::currencyCode());
+        $convert = function (?int $amount) use ($target): ?int { if ($amount === null) return null; $source = $this->currency_code ?: \App\Support\Money::currencyCode(); return $source === $target ? $amount : app(\App\Services\CurrencyConverter::class)->convert($amount, $source, $target); };
+        $baseAmount = $convert($this->base_price); $saleAmount = $convert($this->sale_price);
+        $discount = $saleAmount && $baseAmount > 0
+            ? (int) round((($baseAmount - $saleAmount) / $baseAmount) * 100)
             : null;
 
         return [
-            'effective' => $this->sale_price ?? $this->base_price,
-            'base' => $this->base_price,
-            'sale' => $this->sale_price,
+            'effective' => $saleAmount ?? $baseAmount,
+            'base' => $baseAmount,
+            'sale' => $saleAmount,
             'from' => false,
             'discount' => $discount && $discount > 0 ? $discount : null,
         ];

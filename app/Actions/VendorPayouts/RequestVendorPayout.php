@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorPayout;
 use App\Models\VendorPayoutMethod;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\VendorPayouts\VendorPayoutBalanceService;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
@@ -17,13 +18,16 @@ class RequestVendorPayout
 {
     use GeneratesPayoutNumbers;
 
-    public function __construct(private readonly VendorPayoutBalanceService $balances) {}
+    public function __construct(
+        private readonly VendorPayoutBalanceService $balances,
+        private readonly MarketplaceNotifier $notifier,
+    ) {}
 
     public function handle(Vendor $vendor, User $requester, VendorPayoutMethod $method, int $amount, ?string $currency = null): VendorPayout
     {
         $currency = strtoupper($currency ?: Money::currencyCode());
 
-        return DB::transaction(function () use ($vendor, $requester, $method, $amount, $currency): VendorPayout {
+        $payout = DB::transaction(function () use ($vendor, $requester, $method, $amount, $currency): VendorPayout {
             $lockedVendor = Vendor::query()->whereKey($vendor->id)->lockForUpdate()->firstOrFail();
             $method = VendorPayoutMethod::query()->whereKey($method->id)->lockForUpdate()->firstOrFail();
 
@@ -76,5 +80,9 @@ class RequestVendorPayout
                 'requested_by' => $requester->id,
             ]);
         });
+
+        $this->notifier->payoutRequested($payout);
+
+        return $payout;
     }
 }

@@ -6,16 +6,20 @@
                 alt="{{ config('marketplace.name') }}"
                 class="h-auto w-[150px] object-contain"
             >
-            <p class="mt-3 max-w-sm leading-6">A multi-vendor marketplac built around verified sellers, clear catalog data, and role-aware account areas.</p>
+                <p class="mt-3 max-w-sm leading-6">{{ $tagline ?: 'A multi-vendor marketplace built around verified sellers and clear catalog data.' }}</p>
         </div>
         <div>
-            <p class="font-semibold text-neutral-950">Marketplace</p>
-            <div class="mt-3 space-y-2">
-                <p class="text-neutral-500">Categories</p>
-                <p class="text-neutral-500">Brands</p>
-                <p class="text-neutral-500">Deals</p>
+            <p class="font-semibold text-neutral-950">Shop</p><div class="mt-3 space-y-2">
+                @foreach (($footerMenus['shop'] ?? []) as $item)<a href="{{ $item['url'] }}" class="block hover:text-neutral-950">{{ $item['label'] }}</a>@endforeach
+                @forelse ($footerPages as $page)
+                    <a href="{{ route('storefront.pages.show', $page->slug) }}" class="block hover:text-neutral-950">{{ $page->title }}</a>
+                @empty
+                @endforelse
             </div>
         </div>
+        @if ($supportEmail || $supportPhone)
+            <div><p class="font-semibold text-neutral-950">Support</p><div class="mt-3 space-y-2">@if($supportEmail)<a href="mailto:{{ $supportEmail }}" class="block hover:text-neutral-950">{{ $supportEmail }}</a>@endif @if($supportPhone)<a href="tel:{{ $supportPhone }}" class="block hover:text-neutral-950">{{ $supportPhone }}</a>@endif</div></div>
+        @endif
         <div>
             <p class="font-semibold text-neutral-950">Account</p>
             <div class="mt-3 space-y-2">
@@ -27,15 +31,13 @@
                 @endguest
             </div>
         </div>
-        <div>
-            <p class="font-semibold text-neutral-950">Sellers</p>
+        <div><p class="font-semibold text-neutral-950">Sellers</p>
             <div class="mt-3 space-y-2">
-                <a href="{{ route('vendor.apply') }}" class="block hover:text-neutral-950">Sell With Us</a>
-                <p class="text-neutral-500">Approval workflow</p>
+                @forelse (($footerMenus['sellers'] ?? []) as $item)<a href="{{ $item['url'] }}" class="block hover:text-neutral-950">{{ $item['label'] }}</a>@empty<a href="{{ route('vendor.apply') }}" class="block hover:text-neutral-950">Sell With Us</a>@endforelse
             </div>
         </div>
     </x-container>
     <x-container class="border-t border-neutral-100 py-5 text-sm text-neutral-500">
-        <p>&copy; {{ now()->year }} {{ config('marketplace.name') }}. Marketplace storefront.</p>
+        <p>&copy; {{ now()->year }} {{ $copyrightText ?: ($marketplaceName ?? config('marketplace.name')).' marketplace storefront.' }}</p>
     </x-container>
 </footer>

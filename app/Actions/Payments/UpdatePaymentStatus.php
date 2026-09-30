@@ -4,14 +4,17 @@ namespace App\Actions\Payments;
 
 use App\Enums\PaymentStatus;
 use App\Models\Payment;
+use App\Services\Notifications\MarketplaceNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdatePaymentStatus
 {
+    public function __construct(private readonly MarketplaceNotifier $notifier) {}
+
     public function handle(Payment $payment, PaymentStatus $status): Payment
     {
-        return DB::transaction(function () use ($payment, $status): Payment {
+        $payment = DB::transaction(function () use ($payment, $status): Payment {
             $payment = Payment::query()->lockForUpdate()->find($payment->id);
 
             if (! $payment) {
@@ -36,6 +39,10 @@ class UpdatePaymentStatus
 
             return $payment->refresh();
         });
+
+        $this->notifier->paymentChanged($payment, $status);
+
+        return $payment;
     }
 
     private function canTransition(PaymentStatus $from, PaymentStatus $to): bool

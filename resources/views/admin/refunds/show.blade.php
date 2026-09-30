@@ -7,11 +7,23 @@
 @section('title', $refund->refund_number)
 
 @section('content')
+    @if($refund->status === \App\Enums\RefundStatus::Succeeded || ($refund->status === \App\Enums\RefundStatus::PartiallyProcessed && $refund->economicsRecognized()))
+    <div class="mb-4"><x-button :href="route('admin.documents.refund', $refund)" variant="secondary">{{ __('documents.download_refund') }}</x-button></div>
+    @endif
+    @if($refund->idempotency_key)
+    <x-refund-breakdown :refund="$refund" />
+    @if($refund->status === \App\Enums\RefundStatus::Pending)
+    <form method="POST" action="{{ route('admin.refunds.process',$refund) }}">@csrf<x-button type="submit">Process reserved refund</x-button></form>
+    @endif
+    @endif
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <x-badge :tone="$refund->status->badgeTone()">{{ $refund->status->label() }}</x-badge>
             <h1 class="mt-4 text-2xl font-semibold tracking-normal text-neutral-950">{{ $refund->refund_number }}</h1>
             <p class="mt-2 text-sm leading-6 text-neutral-600">{{ $refund->order->order_number }} · {{ $refund->order->user->email }}</p>
+            @if($refund->returnRequest)
+                <a class="underline" href="{{ route('admin.returns.show', $refund->returnRequest) }}">Return {{ $refund->returnRequest->return_number }}</a>
+            @endif
         </div>
         <div class="flex flex-wrap gap-2">
             <x-button :href="route('admin.orders.show', $refund->order)" variant="secondary">Order</x-button>
@@ -28,7 +40,7 @@
             <section class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft">
                 <h2 class="font-semibold text-neutral-950">Refund Summary</h2>
                 <div class="mt-4 grid gap-3 text-sm">
-                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Amount</span><span class="font-medium">{{ Money::format($refund->amount) }}</span></div>
+                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Amount</span><span class="font-medium">{{ Money::format($refund->amount, $refund->currency) }}</span></div>
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">Currency</span><span class="font-medium">{{ $refund->currency }}</span></div>
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">Provider</span><span class="font-medium">{{ str($refund->provider)->replace('_', ' ')->title() }}</span></div>
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">Reference</span><span class="text-right font-medium">{{ $refund->provider_reference ?? 'Pending' }}</span></div>
@@ -40,10 +52,10 @@
             <section class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft">
                 <h2 class="font-semibold text-neutral-950">Payment Financials</h2>
                 <div class="mt-4 grid gap-3 text-sm">
-                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Original</span><span class="font-medium">{{ Money::format($financialSummary->originalAmount) }}</span></div>
-                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Refunded</span><span class="font-medium">{{ Money::format($financialSummary->refundedAmount) }}</span></div>
-                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Pending</span><span class="font-medium">{{ Money::format($financialSummary->pendingRefundAmount) }}</span></div>
-                    <div class="flex justify-between gap-4 border-t border-neutral-100 pt-3"><span class="font-semibold text-neutral-950">Net Paid</span><span class="font-semibold">{{ Money::format($financialSummary->netPaidAmount()) }}</span></div>
+                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Original</span><span class="font-medium">{{ Money::format($financialSummary->originalAmount, $refund->currency) }}</span></div>
+                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Refunded</span><span class="font-medium">{{ Money::format($financialSummary->refundedAmount, $refund->currency) }}</span></div>
+                    <div class="flex justify-between gap-4"><span class="text-neutral-600">Pending</span><span class="font-medium">{{ Money::format($financialSummary->pendingRefundAmount, $refund->currency) }}</span></div>
+                    <div class="flex justify-between gap-4 border-t border-neutral-100 pt-3"><span class="font-semibold text-neutral-950">Net Paid</span><span class="font-semibold">{{ Money::format($financialSummary->netPaidAmount(), $refund->currency) }}</span></div>
                 </div>
             </section>
         </aside>
@@ -74,7 +86,10 @@
                                 <p class="mt-1 text-neutral-500">{{ $allocation->vendorOrder?->vendor?->display_name ?? 'Marketplace' }} · {{ $allocation->vendorOrder?->vendor_order_number ?? 'Adjustment' }}</p>
                             </div>
                             <p class="text-neutral-600">{{ $allocation->orderItem?->product_name ?? 'No item allocation' }} @if($allocation->quantity) · Qty {{ $allocation->quantity }} @endif</p>
-                            <p class="font-semibold text-neutral-950 md:text-right">{{ Money::format($allocation->amount) }}</p>
+                            @if($refund->economicsRecognized() && $allocation->vendor_order_id)
+                            <p class="text-sm">Seller debit: {{ Money::format((int)($allocation->seller_amount ?? $allocation->amount), $refund->currency) }} · Commission credit: {{ Money::format(abs((int)($allocation->commissionAdjustment?->commission_amount_delta ?? 0)), $refund->currency) }}</p>
+                            @endif
+                            <p class="font-semibold text-neutral-950 md:text-right">{{ Money::format($allocation->amount, $refund->currency) }}</p>
                         </article>
                     @endforeach
                 </div>

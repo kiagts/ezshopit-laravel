@@ -12,6 +12,7 @@ use App\Enums\VendorOrderStatus;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\VendorOrder;
+use App\Services\Notifications\MarketplaceNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,12 +22,13 @@ class CancelOrder
         private readonly CanCancelOrder $canCancelOrder,
         private readonly ReleaseInventoryReservationsForVendorOrder $releaseReservations,
         private readonly UpdatePaymentStatus $updatePaymentStatus,
+        private readonly MarketplaceNotifier $notifier,
     ) {
     }
 
     public function handle(Order $order, OrderCancellationSource $source, ?string $reason = null): Order
     {
-        return DB::transaction(function () use ($order, $source, $reason): Order {
+        $order = DB::transaction(function () use ($order, $source, $reason): Order {
             $lockedOrder = Order::query()
                 ->with('vendorOrders')
                 ->whereKey($order->id)
@@ -59,6 +61,9 @@ class CancelOrder
             }
 
             $this->cancelPayment($payment);
+            if ($lockedOrder->wallet_applied_total > 0) {
+                app(\App\Services\WalletService::class)->reverseCancelledOrder($lockedOrder);
+            }
 
             $lockedOrder->forceFill([
                 'status' => OrderStatus::Cancelled,
@@ -71,6 +76,10 @@ class CancelOrder
 
             return $lockedOrder->refresh()->load(['payment', 'vendorOrders.items.reservation']);
         }, 3);
+
+        $this->notifier->orderCancelled($order);
+
+        return $order;
     }
 
     private function cancelVendorOrder(VendorOrder $vendorOrder, OrderCancellationSource $source, ?string $reason): void

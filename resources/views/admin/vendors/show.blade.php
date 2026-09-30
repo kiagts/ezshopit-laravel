@@ -1,5 +1,9 @@
 @extends('layouts.admin')
 
+@php
+    use App\Support\Money;
+@endphp
+
 @section('title', $vendor->display_name)
 
 @section('content')
@@ -44,6 +48,25 @@
 
     <div class="grid gap-6 xl:grid-cols-[1fr_22rem]">
         <div class="space-y-6">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <x-card>
+                    <p class="text-sm font-medium text-neutral-500">Products</p>
+                    <p class="mt-2 text-2xl font-semibold text-neutral-950">{{ number_format($vendor->products_count) }}</p>
+                </x-card>
+                <x-card>
+                    <p class="text-sm font-medium text-neutral-500">Seller Orders</p>
+                    <p class="mt-2 text-2xl font-semibold text-neutral-950">{{ number_format($vendor->vendor_orders_count) }}</p>
+                </x-card>
+                <x-card>
+                    <p class="text-sm font-medium text-neutral-500">Available Balance</p>
+                    <p class="mt-2 text-2xl font-semibold text-neutral-950">{{ Money::format($financialSummary->availableBalance, $financialSummary->currency) }}</p>
+                </x-card>
+                <x-card>
+                    <p class="text-sm font-medium text-neutral-500">Requestable Payout</p>
+                    <p class="mt-2 text-2xl font-semibold text-neutral-950">{{ Money::format($payoutBalance->requestableBalance, $payoutBalance->currency) }}</p>
+                </x-card>
+            </div>
+
             <x-card>
                 <h2 class="text-lg font-semibold text-neutral-950">Store</h2>
                 @if ($vendor->banner_path)
@@ -100,6 +123,24 @@
                     @endforeach
                 </dl>
             </x-card>
+
+            <x-card>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-neutral-950">Financial Summary</h2>
+                        <p class="mt-1 text-sm text-neutral-600">Ledger-derived seller financials. Historical commissions and payouts remain immutable.</p>
+                    </div>
+                    <x-button :href="route('admin.vendors.financials', $vendor)" variant="secondary" size="sm">View Financials</x-button>
+                </div>
+                <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    <div><dt class="text-neutral-500">Gross Sales</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($financialSummary->grossSales, $financialSummary->currency) }}</dd></div>
+                    <div><dt class="text-neutral-500">Commission</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($financialSummary->commissionCharged, $financialSummary->currency) }}</dd></div>
+                    <div><dt class="text-neutral-500">Refunds</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($financialSummary->refunds, $financialSummary->currency) }}</dd></div>
+                    <div><dt class="text-neutral-500">Pending Balance</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($financialSummary->pendingBalance, $financialSummary->currency) }}</dd></div>
+                    <div><dt class="text-neutral-500">Reserved Payouts</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($payoutBalance->activePayoutReserved, $payoutBalance->currency) }}</dd></div>
+                    <div><dt class="text-neutral-500">Paid Out</dt><dd class="mt-1 font-semibold text-neutral-950">{{ Money::format($payoutBalance->paidOutTotal, $payoutBalance->currency) }}</dd></div>
+                </dl>
+            </x-card>
         </div>
 
         <aside class="space-y-6">
@@ -131,6 +172,23 @@
                         </div>
                     @endforeach
                 </dl>
+            </x-card>
+
+            <x-card>
+                <h2 class="text-lg font-semibold text-neutral-950">Recent Payouts</h2>
+                <div class="mt-5 space-y-3">
+                    @forelse ($recentPayouts as $payout)
+                        <a href="{{ route('admin.payouts.show', $payout) }}" class="block rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm hover:border-brand-200">
+                            <span class="font-semibold text-neutral-950">{{ $payout->payout_number }}</span>
+                            <span class="mt-1 flex items-center justify-between gap-3">
+                                <span class="text-neutral-600">{{ Money::format($payout->amount, $payout->currency) }}</span>
+                                <x-badge :tone="$payout->status->badgeTone()">{{ $payout->status->label() }}</x-badge>
+                            </span>
+                        </a>
+                    @empty
+                        <p class="text-sm text-neutral-600">No payout history yet.</p>
+                    @endforelse
+                </div>
             </x-card>
 
             @if ($vendor->status === \App\Enums\VendorStatus::Pending)

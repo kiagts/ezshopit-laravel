@@ -5,12 +5,16 @@ namespace App\Actions\Products;
 use App\Enums\ProductApprovalStatus;
 use App\Enums\ProductStatus;
 use App\Models\Product;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\ProductSubmissionValidator;
 use Illuminate\Validation\ValidationException;
 
 class SubmitProductForApproval
 {
-    public function __construct(private readonly ProductSubmissionValidator $validator) {}
+    public function __construct(
+        private readonly ProductSubmissionValidator $validator,
+        private readonly MarketplaceNotifier $notifier,
+    ) {}
 
     public function handle(Product $product): Product
     {
@@ -36,6 +40,8 @@ class SubmitProductForApproval
             'rejected_at' => null,
             'rejected_by' => null,
         ])->save();
+
+        $this->notifier->productSubmitted($product);
 
         return $product;
     }

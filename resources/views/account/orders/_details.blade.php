@@ -26,6 +26,7 @@
                         <p class="text-xs font-semibold uppercase tracking-normal text-neutral-500">Sold by</p>
                         <p class="mt-1 font-semibold text-neutral-950">{{ $vendorOrder->vendor?->display_name ?? 'Seller' }}</p>
                         <p class="mt-1 text-sm text-neutral-500">{{ $vendorOrder->vendor_order_number }}</p>
+                        @if($adminView)<a class="inline-flex min-h-11 items-center text-sm underline" href="{{ route('admin.documents.seller', $vendorOrder) }}">{{ __('documents.download_seller') }}</a>@endif
                         @if ($vendorOrder->status === VendorOrderStatus::Cancelled)
                             <p class="mt-2 text-sm text-neutral-600">
                                 @if ($adminView)
@@ -107,6 +108,9 @@
                 @endif
                 <div class="grid gap-2 border-t border-neutral-100 p-5 text-sm">
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">Items</span><span class="font-medium">{{ Money::format($vendorOrder->items_subtotal) }}</span></div>
+                    @if ($vendorOrder->discount_total > 0)
+                        <div class="flex justify-between gap-4 text-emerald-700"><span>Coupon discount</span><span class="font-medium">-{{ Money::format($vendorOrder->discount_total) }}</span></div>
+                    @endif
                     <div class="flex justify-between gap-4"><span class="text-neutral-600">{{ $vendorOrder->shipping_method_name }}</span><span class="font-medium">{{ $vendorOrder->shipping_total === 0 ? 'Free' : Money::format($vendorOrder->shipping_total) }}</span></div>
                     @if ($vendorOrder->deliveryEstimate())
                         <p class="text-xs text-neutral-500">{{ $vendorOrder->deliveryEstimate() }}</p>
@@ -143,8 +147,23 @@
             <h2 class="font-semibold text-neutral-950">Order Summary</h2>
             <div class="mt-4 grid gap-3 text-sm">
                 <div class="flex justify-between gap-4"><span class="text-neutral-600">Items</span><span class="font-medium">{{ Money::format($order->items_subtotal) }}</span></div>
+                @if ($order->discount_total > 0)
+                    <div class="flex justify-between gap-4 text-emerald-700"><span>Coupon discount</span><span class="font-medium">-{{ Money::format($order->discount_total) }}</span></div>
+                @endif
                 <div class="flex justify-between gap-4"><span class="text-neutral-600">Shipping</span><span class="font-medium">{{ $order->shipping_total === 0 ? 'Free' : Money::format($order->shipping_total) }}</span></div>
-                <div class="flex justify-between gap-4 border-t border-neutral-100 pt-3"><span class="font-semibold text-neutral-950">Total</span><span class="font-semibold">{{ Money::format($order->grand_total) }}</span></div>
+                <div class="flex justify-between gap-4 border-t border-neutral-100 pt-3"><span class="font-semibold text-neutral-950">Total</span><span class="font-semibold">{{ Money::format($order->grand_total, $order->currency) }}</span></div>
+                @if($order->wallet_applied_total > 0)
+                    <div class="flex justify-between gap-4"><span>Wallet funded</span><span>{{ Money::format($order->wallet_applied_total, $order->currency) }}</span></div>
+                    @if($order->relationLoaded('walletTransactions'))
+                        <div class="flex justify-between gap-4"><span>Returned to wallet</span><span>{{ Money::format((int) $order->walletTransactions->where('type', App\Enums\WalletTransactionType::Reversal)->sum('amount'), $order->currency) }}</span></div>
+                        @if($adminView ?? false)<p class="text-xs text-neutral-500">Wallet ledger entries: {{ $order->walletTransactions->pluck('id')->join(', ') }}</p>@endif
+                    @endif
+                    <div class="flex justify-between gap-4"><span>External payment amount</span><span>{{ Money::format($order->grand_total - $order->wallet_applied_total - $order->gift_card_applied_total, $order->currency) }}</span></div>
+                @endif
+                @if($order->gift_card_applied_total > 0)
+                    <div class="flex justify-between gap-4"><span>Gift card funded</span><span>{{ Money::format($order->gift_card_applied_total, $order->currency) }}</span></div>
+                    <p class="text-xs text-neutral-500">Gift card ending {{ $order->gift_card_last_four }}</p>
+                @endif
                 @if ($financialSummary && ($financialSummary->refundedAmount > 0 || $financialSummary->pendingRefundAmount > 0))
                     <div class="flex justify-between gap-4 text-emerald-700"><span>Refunded</span><span class="font-medium">-{{ Money::format($financialSummary->refundedAmount) }}</span></div>
                     @if ($financialSummary->pendingRefundAmount > 0)
@@ -213,14 +232,18 @@
                 <div class="mt-5 rounded-md border border-neutral-200 bg-neutral-50 p-4">
                     <p class="text-sm font-semibold text-neutral-950">Refunds</p>
                     <div class="mt-3 space-y-3 text-xs text-neutral-600">
-                        @foreach ($order->payment->refunds->whereIn('status', [RefundStatus::Pending, RefundStatus::Processing, RefundStatus::Succeeded]) as $refund)
+                        @foreach ($order->payment->refunds->whereIn('status', [RefundStatus::Pending, RefundStatus::Processing, RefundStatus::PartiallyProcessed, RefundStatus::Succeeded]) as $refund)
+                            @if($refund->status === RefundStatus::Succeeded || ($refund->status === RefundStatus::PartiallyProcessed && $refund->economicsRecognized()))
+                            <a class="inline-flex min-h-11 items-center font-medium underline" href="{{ route(($adminView ? 'admin' : 'account').'.documents.refund', $refund) }}">{{ __('documents.download_refund') }} — {{ $refund->refund_number }}</a>
+                            @endif
+                            @if($refund->idempotency_key)<x-refund-breakdown :refund="$refund" />@endif
                             <div class="rounded-md border border-neutral-200 bg-white p-3">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <span class="font-medium text-neutral-950">{{ $refund->refund_number }}</span>
                                     <x-badge :tone="$refund->status->badgeTone()">{{ $adminView ? $refund->status->label() : $refund->status->customerLabel() }}</x-badge>
                                 </div>
                                 <div class="mt-2 grid gap-1">
-                                    <span>{{ Money::format($refund->amount) }}</span>
+                                    <span>{{ Money::format($refund->amount, $refund->currency) }}</span>
                                     <span>{{ $refund->processed_at?->format('M j, Y g:i A') ?? $refund->requested_at?->format('M j, Y g:i A') }}</span>
                                     @if ($adminView)
                                         <span>Provider: {{ $refund->provider }} · {{ $refund->provider_reference ?? 'Pending' }}</span>
@@ -233,12 +256,13 @@
                 </div>
             @endif
 
-            @if ($adminView && $order->payment && $financialSummary && $financialSummary->refundableAmount() > 0)
+            @if ($adminView && $order->payment && in_array($order->payment->status, [\App\Enums\PaymentStatus::Paid, \App\Enums\PaymentStatus::PartiallyRefunded], true))
                 <div class="mt-5 rounded-md border border-neutral-200 bg-neutral-50 p-4">
                     <p class="text-sm font-semibold text-neutral-950">Issue Refund</p>
-                    <p class="mt-1 text-xs leading-5 text-neutral-600">Allocate the refund to items, seller shipping, or a marketplace adjustment. Provider and currency are derived from the payment.</p>
-                    <form method="POST" action="{{ route('admin.orders.refunds.store', $order) }}" class="mt-4 space-y-4" onsubmit="return confirm('Issue this refund? Provider refunds may be irreversible.')">
+                    <p class="mt-1 text-xs leading-5 text-neutral-600">Select items and quantities. Merchandise, discounts and tax are calculated from the original order. Shipping and additional compensation require an explicit amount. Refunds use {{ $order->currency }}.</p>
+                    <form method="POST" action="{{ route('admin.orders.refunds.store', $order) }}" class="mt-4 space-y-4" onsubmit="return confirm('Issue this refund? Internal funding will be restored; external refunds remain pending.')">
                         @csrf
+                        <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', 'manual:'.\Illuminate\Support\Str::uuid()) }}">
                         <div>
                             <label for="refund-reason" class="text-sm font-medium text-neutral-800">Reason</label>
                             <input id="refund-reason" name="reason" required maxlength="255" value="{{ old('reason') }}" class="mt-2 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-neutral-950 focus:outline-none focus:ring-2 focus:ring-neutral-950/10" placeholder="Customer service adjustment, damaged item, or late payment after cancellation">
@@ -260,10 +284,10 @@
                                             <input type="hidden" name="allocations[{{ $allocationIndex }}][order_item_id]" value="{{ $item->id }}">
                                             <div>
                                                 <p class="font-medium text-neutral-800">{{ $item->product_name }}</p>
-                                                <p class="text-neutral-500">Available {{ Money::format(max(0, $item->line_total - ($refundFinancials?->protectedItemAmount($item->id) ?? 0))) }} · Qty {{ $item->quantity - ($refundFinancials?->protectedItemQuantity($item->id) ?? 0) }}</p>
+                                                <p class="text-neutral-500">Purchased quantity: {{ $item->quantity }}. Previously reserved quantities are checked when submitted.</p>
                                             </div>
                                             <input name="allocations[{{ $allocationIndex }}][quantity]" type="number" min="1" max="{{ $item->quantity }}" class="rounded-md border border-neutral-300 px-2 py-2 text-sm" placeholder="Qty">
-                                            <input name="allocations[{{ $allocationIndex }}][amount]" class="rounded-md border border-neutral-300 px-2 py-2 text-sm" placeholder="0.00">
+                                            <label><input type="checkbox" name="allocations[{{ $allocationIndex }}][amount]" value="0.01"> Refund selected quantity</label>
                                         </div>
                                         @php $allocationIndex++; @endphp
                                     @endforeach

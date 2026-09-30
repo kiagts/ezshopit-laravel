@@ -91,6 +91,7 @@
             </div>
             <div class="md:col-span-2">
                 <x-textarea label="Description" name="description" rows="7" placeholder="Describe the product clearly enough for marketplace review" :readonly="$locked">{{ old('description', $product->description) }}</x-textarea>
+                <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 md:col-span-2"><p class="text-sm font-semibold">Translations</p><div class="mt-3 grid gap-3 md:grid-cols-2"><x-input label="Urdu name" name="translations[ur][name]" :readonly="$locked" :value="old('translations.ur.name', data_get($product->translations,'ur.name'))" /><x-input label="Arabic name" name="translations[ar][name]" :readonly="$locked" :value="old('translations.ar.name', data_get($product->translations,'ar.name'))" /></div></div>
             </div>
         </div>
     </x-card>

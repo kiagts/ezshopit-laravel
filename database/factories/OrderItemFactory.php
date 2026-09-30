@@ -30,6 +30,10 @@ class OrderItemFactory extends Factory
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'line_total' => $unitPrice * $quantity,
+            'discount_total' => 0,
+            'marketplace_discount_total' => 0,
+            'vendor_discount_total' => 0,
+            'net_line_total' => $unitPrice * $quantity,
             'attributes_snapshot' => null,
         ];
     }

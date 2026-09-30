@@ -7,8 +7,10 @@ use App\Enums\ProductAttributeType;
 use App\Enums\ProductStatus;
 use App\Enums\ProductType;
 use App\Enums\VendorStatus;
+use App\Enums\HomepageSectionType;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\HomepageSection;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductAttribute;
@@ -173,6 +175,15 @@ class VendorStorefrontTest extends TestCase
     {
         $vendor = Vendor::factory()->approved()->create(['display_name' => 'TechVerse', 'slug' => 'techverse']);
         $product = $this->createPublicProduct('Seller Linked Product', vendor: $vendor);
+        HomepageSection::query()->create([
+            'key' => 'stores',
+            'type' => HomepageSectionType::Vendors,
+            'name' => 'Stores',
+            'title' => 'Stores',
+            'is_enabled' => true,
+            'sort_order' => 10,
+            'settings' => ['source' => 'latest', 'limit' => 8],
+        ]);
 
         $this->get(route('storefront.products.show', $product))
             ->assertOk()

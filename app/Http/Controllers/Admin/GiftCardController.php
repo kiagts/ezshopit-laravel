@@ -1,0 +1,4 @@
+<?php
+namespace App\Http\Controllers\Admin;
+use App\Http\Controllers\Controller; use App\Models\GiftCard; use App\Services\GiftCardService; use App\Support\Money; use Illuminate\Http\Request;
+class GiftCardController extends Controller { public function index(Request $r){$cards=GiftCard::when($r->q,fn($q,$v)=>$q->where('code_last_four','like','%'.$v))->latest()->paginate(25)->withQueryString();return view('admin.gift-cards.index',compact('cards'));} public function issue(Request $r,GiftCardService $s){$d=$r->validate(['amount'=>['required','numeric','min:0.01'],'currency'=>['required','string','size:3'],'recipient_email'=>['nullable','email']]);[$card,$code]=$s->issue(Money::parseDecimal($d['amount']),strtoupper($d['currency']),$r->user()->id,['recipient_email'=>$d['recipient_email']??null]);return back()->with('status','Gift card issued. Code: '.$code);}}

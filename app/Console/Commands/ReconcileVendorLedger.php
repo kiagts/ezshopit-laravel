@@ -18,7 +18,7 @@ class ReconcileVendorLedger extends Command
 {
     protected $signature = 'vendor-ledger:reconcile {--chunk=100}';
 
-    protected $description = 'Post missing vendor ledger entries from commission, refund, and commission adjustment sources.';
+    protected $description = 'Post missing vendor ledger entries from commission, vendor promotion, refund, and commission adjustment sources.';
 
     public function handle(
         PostVendorOrderEarnings $postVendorOrderEarnings,
@@ -94,7 +94,7 @@ class ReconcileVendorLedger extends Command
                 }
             });
 
-        $this->info("Posted sale/commission entries: {$earnings}");
+        $this->info("Posted sale/commission/promotion entries: {$earnings}");
         $this->info("Posted refund debit entries: {$refunds}");
         $this->info("Posted commission refund credit entries: {$commissionRefunds}");
         $this->info("Failed: {$failed}");

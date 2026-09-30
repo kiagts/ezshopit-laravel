@@ -1,502 +1,103 @@
-@extends('layouts.app')
+@extends('account.layout')
+
+@php
+    use App\Support\Countries;
+    use App\Support\Money;
+@endphp
 
 @section('title', 'Account')
+@section('account_active', 'account')
+@section('account_title', 'Hi, '.strtok($user->name, ' '))
+@section('account_description', 'A quick view of your orders, saved products, reviews, addresses, and messages.')
 
-@section('content')
+@section('account_content')
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <a href="{{ route('account.orders.index') }}" class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft transition hover:border-brand-200">
+            <p class="text-sm font-medium text-neutral-500">Orders</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-950">{{ number_format($ordersCount) }}</p>
+            <p class="mt-1 text-xs text-neutral-500">All marketplace orders</p>
+        </a>
 
-    <section class="bg-neutral-50">
-        <x-container class="py-8 sm:py-10 lg:py-12">
+        <a href="{{ route('account.wishlist.index') }}" class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft transition hover:border-brand-200">
+            <p class="text-sm font-medium text-neutral-500">Wishlist</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-950">{{ number_format($wishlistCount) }}</p>
+            <p class="mt-1 text-xs text-neutral-500">Saved products</p>
+        </a>
 
-            <div
-                class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start"
-            >
+        <a href="{{ route('account.reviews.index') }}" class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft transition hover:border-brand-200">
+            <p class="text-sm font-medium text-neutral-500">Awaiting Review</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-950">{{ number_format($awaitingReviewsCount) }}</p>
+            <p class="mt-1 text-xs text-neutral-500">Delivered purchases</p>
+        </a>
 
-                {{-- ===================================================== --}}
-                {{-- ACCOUNT SIDEBAR --}}
-                {{-- ===================================================== --}}
-                <x-account.nav active="account" />
+        <a href="{{ route('account.notifications.index', ['filter' => 'unread']) }}" class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft transition hover:border-brand-200">
+            <p class="text-sm font-medium text-neutral-500">Unread Messages</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-950">{{ number_format($unreadNotificationsCount) }}</p>
+            <p class="mt-1 text-xs text-neutral-500">Account notifications</p>
+        </a>
+    </div>
 
-
-                {{-- ===================================================== --}}
-                {{-- MAIN DASHBOARD --}}
-                {{-- ===================================================== --}}
-                <section class="min-w-0">
-
-                    {{-- ================================================= --}}
-                    {{-- WELCOME --}}
-                    {{-- ================================================= --}}
-                    <div
-                        class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-                    >
-
-                        <div>
-                            <h1
-                                class="text-3xl font-semibold tracking-normal text-neutral-950"
-                            >
-                                Hi, {{ strtok($user->name, ' ') }} 👋
-                            </h1>
-
-                            <p
-                                class="mt-2 text-sm leading-6 text-neutral-600"
-                            >
-                                Welcome back. Here’s what’s happening with your account.
-                            </p>
-                        </div>
-
-                    </div>
-
-
-                    {{-- ================================================= --}}
-                    {{-- QUICK SUMMARY --}}
-                    {{-- ================================================= --}}
-                    <div
-                        class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
-                    >
-
-                        {{-- Orders --}}
-                        <a
-                            href="{{ route('account.orders.index') }}"
-                            class="group rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-brand-200 hover:shadow-md"
-                        >
-                            <div
-                                class="flex items-start justify-between gap-4"
-                            >
-                                <div
-                                    class="flex items-start gap-3"
-                                >
-                                    <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.7"
-                                            class="h-5 w-5"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M6.75 7.5h10.5l1 12H5.75l1-12Z"
-                                            />
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M9 8V6a3 3 0 0 1 6 0v2"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <div>
-                                        <p
-                                            class="text-sm font-medium text-neutral-500"
-                                        >
-                                            Orders
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-2xl font-semibold text-neutral-950"
-                                        >
-                                            {{ $ordersCount ?? 0 }}
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-xs text-neutral-500"
-                                        >
-                                            View your recent orders
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition group-hover:border-brand-300 group-hover:text-brand-700"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        class="h-4 w-4"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M5 12h14M13 6l6 6-6 6"
-                                        />
-                                    </svg>
-                                </div>
-                            </div>
-                        </a>
-
-
-                        {{-- Wishlist --}}
-                        <a
-                            href="{{ route('account.wishlist.index') }}"
-                            class="group rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-brand-200 hover:shadow-md"
-                        >
-                            <div
-                                class="flex items-start justify-between gap-4"
-                            >
-                                <div
-                                    class="flex items-start gap-3"
-                                >
-                                    <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.7"
-                                            class="h-5 w-5"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <div>
-                                        <p
-                                            class="text-sm font-medium text-neutral-500"
-                                        >
-                                            Wishlist
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-2xl font-semibold text-neutral-950"
-                                        >
-                                            {{ $wishlistCount ?? 0 }}
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-xs text-neutral-500"
-                                        >
-                                            Items saved for later
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition group-hover:border-brand-300 group-hover:text-brand-700"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        class="h-4 w-4"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M5 12h14M13 6l6 6-6 6"
-                                        />
-                                    </svg>
-                                </div>
-                            </div>
-                        </a>
-
-
-                        {{-- Addresses --}}
-                        <a
-                            href="{{ route('account.addresses.index') }}"
-                            class="group rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-brand-200 hover:shadow-md sm:col-span-2 xl:col-span-1"
-                        >
-                            <div
-                                class="flex items-start justify-between gap-4"
-                            >
-                                <div
-                                    class="flex items-start gap-3"
-                                >
-                                    <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.7"
-                                            class="h-5 w-5"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
-                                            />
-                                            <circle
-                                                cx="12"
-                                                cy="10"
-                                                r="2.5"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <div>
-                                        <p
-                                            class="text-sm font-medium text-neutral-500"
-                                        >
-                                            Saved Addresses
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-2xl font-semibold text-neutral-950"
-                                        >
-                                            {{ $addressesCount ?? 0 }}
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-xs text-neutral-500"
-                                        >
-                                            Manage your addresses
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition group-hover:border-brand-300 group-hover:text-brand-700"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        class="h-4 w-4"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M5 12h14M13 6l6 6-6 6"
-                                        />
-                                    </svg>
-                                </div>
-                            </div>
-                        </a>
-
-                    </div>
-
-
-                    {{-- ================================================= --}}
-                    {{-- RECENT ORDER --}}
-                    {{-- ================================================= --}}
-                    <div
-                        class="mt-5 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
-                    >
-                        <div
-                            class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"
-                        >
-                            <div
-                                class="flex items-start gap-4"
-                            >
-                                <div
-                                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.7"
-                                        class="h-6 w-6"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M6.75 7.5h10.5l1 12H5.75l1-12Z"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M9 8V6a3 3 0 0 1 6 0v2"
-                                        />
-                                    </svg>
-                                </div>
-
-                                <div>
-                                    <p
-                                        class="text-lg font-semibold text-neutral-950"
-                                    >
-                                        Recent Order
-                                    </p>
-
-                                    @if (!empty($recentOrder))
-                                        <div
-                                            class="mt-1 flex flex-wrap items-center gap-2"
-                                        >
-                                            <span
-                                                class="text-sm font-semibold text-brand-700"
-                                            >
-                                                Order #{{ $recentOrder->id }}
-                                            </span>
-
-                                            @if (!empty($recentOrder->status))
-                                                <span
-                                                    class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-700"
-                                                >
-                                                    {{ str_replace('_', ' ', $recentOrder->status) }}
-                                                </span>
-                                            @endif
-                                        </div>
-
-                                        <p
-                                            class="mt-2 text-sm text-neutral-500"
-                                        >
-                                            Placed on
-                                            {{ $recentOrder->created_at->format('M d, Y') }}
-                                        </p>
-                                    @else
-                                        <p
-                                            class="mt-1 text-sm text-neutral-500"
-                                        >
-                                            You have not placed any orders yet.
-                                        </p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <a
-                                href="{{ route('account.orders.index') }}"
-                                class="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-brand-700 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
-                            >
-                                {{ !empty($recentOrder) ? 'View Order Details' : 'View Orders' }}
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    class="h-4 w-4"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M5 12h14M13 6l6 6-6 6"
-                                    />
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-
-
-                    {{-- ================================================= --}}
-                    {{-- DEFAULT DELIVERY ADDRESS --}}
-                    {{-- ================================================= --}}
-                    <div
-                        class="mt-5 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
-                    >
-                        <div
-                            class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"
-                        >
-                            <div
-                                class="flex items-start gap-4"
-                            >
-                                <div
-                                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.7"
-                                        class="h-6 w-6"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
-                                        />
-                                        <circle
-                                            cx="12"
-                                            cy="10"
-                                            r="2.5"
-                                        />
-                                    </svg>
-                                </div>
-
-                                <div>
-                                    <p
-                                        class="text-lg font-semibold text-neutral-950"
-                                    >
-                                        Default Delivery Address
-                                    </p>
-
-                                    @if (!empty($defaultAddress))
-                                        <div
-                                            class="mt-2 text-sm leading-6 text-neutral-600"
-                                        >
-                                            @if (!empty($defaultAddress->address_line_1))
-                                                <p>
-                                                    {{ $defaultAddress->address_line_1 }}
-                                                </p>
-                                            @endif
-
-                                            @if (!empty($defaultAddress->address_line_2))
-                                                <p>
-                                                    {{ $defaultAddress->address_line_2 }}
-                                                </p>
-                                            @endif
-                                            
-                                            <p>
-                                                {{ collect([
-                                                    $defaultAddress->city ?? null,
-                                                    $defaultAddress->state ?? null,
-                                                    $defaultAddress->postal_code ?? null,
-                                                ])->filter()->implode(', ') }}
-                                            </p>
-
-                                            @if (!empty($defaultAddress->phone))
-                                                <p>
-                                                    {{ $defaultAddress->phone }}
-                                                </p>
-                                            @endif
-                                        </div>
-                                    @else
-                                        <p
-                                            class="mt-1 text-sm text-neutral-500"
-                                        >
-                                            No default delivery address has been added yet.
-                                        </p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <a
-                                href="{{ route('account.addresses.index') }}"
-                                class="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-brand-700 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
-                            >
-                                Manage Addresses
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    class="h-4 w-4"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M5 12h14M13 6l6 6-6 6"
-                                    />
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-                </section>
+    <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <section class="rounded-lg border border-neutral-200 bg-white shadow-soft">
+            <div class="flex items-center justify-between gap-4 border-b border-neutral-100 p-5">
+                <h2 class="font-semibold text-neutral-950">Latest Orders</h2>
+                <a href="{{ route('account.orders.index') }}" class="text-sm font-medium text-brand-700 hover:text-brand-900">View all</a>
             </div>
-        </x-container>
-    </section>
+            <div class="divide-y divide-neutral-100">
+                @forelse ($latestOrders as $order)
+                    <article class="grid gap-3 p-5 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+                        <div>
+                            <a href="{{ route('account.orders.show', $order) }}" class="font-semibold text-neutral-950 hover:text-brand-700">{{ $order->order_number }}</a>
+                            <p class="mt-1 text-neutral-600">{{ $order->vendor_orders_count }} {{ str('seller')->plural($order->vendor_orders_count) }} · {{ $order->placed_at?->format('M j, Y') }}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <x-badge :tone="$order->status->badgeTone()">{{ $order->status->label() }}</x-badge>
+                                <x-badge :tone="($order->payment?->status ?? $order->payment_status)->badgeTone()">Payment {{ ($order->payment?->status ?? $order->payment_status)->label() }}</x-badge>
+                            </div>
+                        </div>
+                        <p class="font-semibold text-neutral-950 sm:text-right">{{ Money::format($order->grand_total) }}</p>
+                    </article>
+                @empty
+                    <x-empty-state title="No orders yet" description="Your checkout orders will appear here." class="m-5" />
+                @endforelse
+            </div>
+        </section>
+
+        <div class="space-y-6">
+            <section class="rounded-lg border border-neutral-200 bg-white p-5 shadow-soft">
+                <h2 class="font-semibold text-neutral-950">Default Address</h2>
+                @if ($defaultAddress)
+                    <div class="mt-3 text-sm leading-6 text-neutral-600">
+                        <p class="font-medium text-neutral-950">{{ trim($defaultAddress->first_name.' '.$defaultAddress->last_name) }}</p>
+                        <p>{{ $defaultAddress->address_line_1 }}</p>
+                        @if ($defaultAddress->address_line_2)
+                            <p>{{ $defaultAddress->address_line_2 }}</p>
+                        @endif
+                        <p>{{ collect([$defaultAddress->city, $defaultAddress->state_region, $defaultAddress->postal_code])->filter()->implode(', ') }}</p>
+                        <p>{{ Countries::name($defaultAddress->country_code) }}</p>
+                    </div>
+                @else
+                    <p class="mt-2 text-sm leading-6 text-neutral-600">Add a delivery address to make checkout faster.</p>
+                @endif
+                <x-button :href="route('account.addresses.index')" variant="secondary" size="sm" class="mt-5">Manage Addresses</x-button>
+            </section>
+
+            <section class="rounded-lg border border-neutral-200 bg-white shadow-soft">
+                <div class="flex items-center justify-between gap-4 border-b border-neutral-100 p-5">
+                    <h2 class="font-semibold text-neutral-950">Notifications</h2>
+                    <a href="{{ route('account.notifications.index') }}" class="text-sm font-medium text-brand-700 hover:text-brand-900">Open</a>
+                </div>
+                <div class="divide-y divide-neutral-100">
+                    @forelse ($latestNotifications as $notification)
+                        <a href="{{ route('account.notifications.open', $notification) }}" class="block p-5 text-sm hover:bg-neutral-50">
+                            <p class="font-medium text-neutral-950">{{ $notification->data['title'] ?? 'Account update' }}</p>
+                            <p class="mt-1 line-clamp-2 text-neutral-600">{{ $notification->data['message'] ?? '' }}</p>
+                            <p class="mt-2 text-xs text-neutral-500">{{ $notification->created_at?->diffForHumans() }}</p>
+                        </a>
+                    @empty
+                        <p class="p-5 text-sm text-neutral-600">No notifications yet.</p>
+                    @endforelse
+                </div>
+            </section>
+        </div>
+    </div>
 @endsection

@@ -3,7 +3,7 @@
 @php
     $labels = [
         'in_stock'     => 'In stock',
-        'low_stock'    => 'Limited stock',
+        'low_stock'    => 'Low stock',
         'out_of_stock' => 'Out of stock',
     ];
 

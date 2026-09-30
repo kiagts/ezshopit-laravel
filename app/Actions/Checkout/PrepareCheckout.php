@@ -38,6 +38,12 @@ class PrepareCheckout
             );
         }
 
+        if (($evaluation['promotion_evaluation']['promotion'] ?? null) && ! $evaluation['promotion_evaluation']['valid']) {
+            throw new HttpResponseException(
+                redirect()->route('cart.index')->with('status', $evaluation['promotion_evaluation']['message'] ?? 'Review your coupon before checkout.')
+            );
+        }
+
         return $evaluation;
     }
 

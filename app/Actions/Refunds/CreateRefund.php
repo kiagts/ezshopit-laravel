@@ -17,6 +17,18 @@ use Illuminate\Validation\ValidationException;
 
 class CreateRefund
 {
+    /** Persist a validated commerce reversal using the existing refund domain. */
+    public function persistPrepared(Order $order, Payment $payment, User $admin, string $reason, array $prepared, array $context = []): Refund
+    {
+        $refund = $payment->refunds()->create($context + [
+            'refund_number' => $this->refundNumberGenerator->generate(), 'order_id' => $order->id,
+            'status' => RefundStatus::Pending, 'amount' => array_sum(array_column($prepared, 'amount')),
+            'currency' => $order->currency, 'reason' => $reason, 'provider' => $payment->provider,
+            'requested_by' => $admin->id, 'requested_at' => now(),
+        ]);
+        foreach ($prepared as $allocation) $refund->allocations()->create($allocation);
+        return $refund;
+    }
     public function __construct(
         private readonly RefundNumberGenerator $refundNumberGenerator,
         private readonly RefundFinancials $refundFinancials,
@@ -112,7 +124,7 @@ class CreateRefund
             $amount = (int) $allocations->sum('amount');
             $quantity = (int) $allocations->sum('quantity');
 
-            if ($amount > $item->line_total - $this->refundFinancials->protectedItemAmount($item->id)) {
+            if ($amount > $item->customerLineTotal() - $this->refundFinancials->protectedItemAmount($item->id)) {
                 throw ValidationException::withMessages(['allocations' => 'Refund amount exceeds available item value.']);
             }
 
@@ -173,18 +185,21 @@ class CreateRefund
                 throw ValidationException::withMessages(["allocations.{$index}.quantity" => 'Refund quantity exceeds available item quantity.']);
             }
 
-            if ($amount !== $quantity * $item->unit_price) {
+            $expectedAmount = intdiv($item->customerLineTotal() * $quantity, max(1, (int) $item->quantity));
+
+            if ($amount !== $expectedAmount) {
                 throw ValidationException::withMessages(["allocations.{$index}.amount" => 'Quantity-based item refunds must equal quantity times unit price.']);
             }
         }
 
-        if ($amount > $item->line_total - $this->refundFinancials->protectedItemAmount($item->id)) {
+        if ($amount > $item->customerLineTotal() - $this->refundFinancials->protectedItemAmount($item->id)) {
             throw ValidationException::withMessages(["allocations.{$index}.amount" => 'Refund amount exceeds available item value.']);
         }
 
         return [
             'type' => RefundAllocationType::Item,
             'amount' => $amount,
+            'seller_amount' => $this->sellerRefundAmount($item, $amount),
             'quantity' => $quantity,
             'vendor_order_id' => $item->vendor_order_id,
             'order_item_id' => $item->id,
@@ -210,9 +225,24 @@ class CreateRefund
         return [
             'type' => RefundAllocationType::Shipping,
             'amount' => $amount,
+            'seller_amount' => $amount,
             'quantity' => null,
             'vendor_order_id' => $vendorOrder->id,
             'order_item_id' => null,
         ];
+    }
+
+    private function sellerRefundAmount(OrderItem $item, int $customerRefundAmount): int
+    {
+        $customerLineTotal = $item->customerLineTotal();
+
+        if ($customerLineTotal <= 0) {
+            return 0;
+        }
+
+        return min(
+            $item->sellerLineTotal(),
+            intdiv($customerRefundAmount * $item->sellerLineTotal(), $customerLineTotal),
+        );
     }
 }

@@ -20,6 +20,7 @@ class ProcessRefund
 
     public function handle(Refund $refund): Refund
     {
+        if ($refund->idempotency_key) return app(\App\Services\Refunds\RefundService::class)->process($refund, $refund->requestedBy);
         $refund->loadMissing('payment');
 
         if ($refund->status !== RefundStatus::Pending) {

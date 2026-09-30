@@ -17,11 +17,22 @@
                     class="absolute inset-0 transition-opacity duration-700 {{ $index === 0 ? 'opacity-100' : 'pointer-events-none opacity-0' }}"
                     data-banner-slide
                 >
+                    @if (!empty($banner['url']))
+                        <a href="{{ $banner['url'] }}" class="block h-full" aria-label="{{ $banner['title'] }}">
+                    @endif
+                    <picture>
+                        @if (!empty($banner['mobile_image']))
+                            <source media="(max-width: 639px)" srcset="{{ $banner['mobile_image'] }}">
+                        @endif
                     <img
-                        src="{{ Storage::url('demo/banners/'. $banner['image'] ) }}"
-                        alt="{{ $banner['title'] ?? 'Banner' }}"
+                        src="{{ $banner['image'] }}"
+                        alt="{{ $banner['image_alt'] ?? $banner['title'] ?? 'Banner' }}"
                         class="h-full w-full object-cover"
                     >
+                    </picture>
+                    @if (!empty($banner['url']))
+                        </a>
+                    @endif
                 </div>
 
             @endforeach

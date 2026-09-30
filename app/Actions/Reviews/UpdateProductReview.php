@@ -5,16 +5,20 @@ namespace App\Actions\Reviews;
 use App\Enums\ProductReviewStatus;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Services\Notifications\MarketplaceNotifier;
 use App\Services\Reviews\ProductRatingService;
 use Illuminate\Support\Facades\DB;
 
 class UpdateProductReview
 {
-    public function __construct(private readonly ProductRatingService $ratings) {}
+    public function __construct(
+        private readonly ProductRatingService $ratings,
+        private readonly MarketplaceNotifier $notifier,
+    ) {}
 
     public function handle(ProductReview $review, array $data): ProductReview
     {
-        return DB::transaction(function () use ($review, $data): ProductReview {
+        $review = DB::transaction(function () use ($review, $data): ProductReview {
             $review = ProductReview::query()->whereKey($review->id)->lockForUpdate()->firstOrFail();
             $product = Product::query()->whereKey($review->product_id)->lockForUpdate()->firstOrFail();
 
@@ -36,5 +40,9 @@ class UpdateProductReview
 
             return $review;
         });
+
+        $this->notifier->reviewSubmitted($review);
+
+        return $review;
     }
 }

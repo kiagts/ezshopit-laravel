@@ -10,13 +10,13 @@ class RecalculatePaymentRefundStatus
 {
     public function handle(Payment $payment): Payment
     {
-        $refunded = (int) $payment->refunds()
-            ->where('status', RefundStatus::Succeeded->value)
-            ->sum('amount');
+        $refunded = $payment->amount > 0
+            ? app(\App\Services\Refunds\RefundFinancials::class)->summaryForPayment($payment->fresh())->refundedAmount
+            : (int) $payment->refunds()->where('status', RefundStatus::Succeeded->value)->sum('amount');
 
         $status = match (true) {
             $refunded <= 0 => PaymentStatus::Paid,
-            $refunded >= $payment->amount => PaymentStatus::Refunded,
+            $refunded >= ($payment->amount ?: $payment->order->grand_total) => PaymentStatus::Refunded,
             default => PaymentStatus::PartiallyRefunded,
         };
 

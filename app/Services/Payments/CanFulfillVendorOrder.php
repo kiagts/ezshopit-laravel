@@ -21,7 +21,7 @@ class CanFulfillVendorOrder
             return new FulfillmentEligibility(true);
         }
 
-        if ($payment->method === PaymentMethod::Card && $payment->status === PaymentStatus::Paid) {
+        if (in_array($payment->method, [PaymentMethod::Card, PaymentMethod::Wallet], true) && $payment->status === PaymentStatus::Paid) {
             return new FulfillmentEligibility(true);
         }
 

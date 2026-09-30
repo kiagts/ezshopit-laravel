@@ -13,6 +13,10 @@
 
 @section('title', 'Order Placed')
 
+@push('head')
+    <meta name="robots" content="noindex,nofollow">
+@endpush
+
 @section('content')
 
     <section class="bg-neutral-50">

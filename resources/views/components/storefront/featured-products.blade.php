@@ -147,16 +147,6 @@
 
                 @foreach ($products as $index => $product)
 
-                    @php
-                        $badge = match ($index) {
-                            0 => 'New',
-                            1 => 'Bestseller',
-                            2 => 'Sale',
-                            5 => 'Low Stock',
-                            default => null,
-                        };
-                    @endphp
-
                     <div class="w-[78%] shrink-0 snap-start sm:w-[44%] md:w-[31%] lg:w-[23.5%] xl:w-[19%]">
 
                         <x-storefront.product-card
@@ -166,7 +156,7 @@
                                 $wishlistedProductIds,
                                 true
                             )"
-                            :badge="$badge"
+                            :badge="$product->is_featured ? 'Featured' : null"
                         />
 
                     </div>

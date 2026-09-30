@@ -25,7 +25,7 @@
 @endphp
 
 
-@section('title', $product->name)
+@section('title', $product->localized_name)
 
 @section(
     'description',
@@ -46,7 +46,7 @@
 
     <meta
         property="og:title"
-        content="{{ $product->name }}"
+        content="{{ $product->localized_name }}"
     >
 
     <meta
@@ -435,7 +435,7 @@
                         <h1
                             class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-neutral-950 sm:text-4xl"
                         >
-                            {{ $product->name }}
+                                    {{ $product->localized_name }}
                         </h1>
 
                         @if ($product->approvedReviewCount() > 0)

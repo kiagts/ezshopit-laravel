@@ -6,6 +6,17 @@ use InvalidArgumentException;
 
 class Money
 {
+    /** Format a snapshotted currency without floats or storefront configuration. */
+    public static function formatWithPrecision(int $amount, string $currency, int $minorUnit): string
+    {
+        $metadata = Currency::from($currency, $minorUnit);
+        $absolute = abs($amount);
+        $scale = 10 ** $metadata->minorUnit;
+        $whole = (string) intdiv($absolute, $scale);
+        $whole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole);
+        $fraction = $minorUnit ? '.'.str_pad((string) ($absolute % $scale), $minorUnit, '0', STR_PAD_LEFT) : '';
+        return $currency.' '.($amount < 0 ? '-' : '').$whole.$fraction;
+    }
     public static function parseDecimal(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -35,7 +46,7 @@ class Money
         $divisor = 10 ** $minorUnit;
         $number = number_format($amount / $divisor, $minorUnit);
 
-        return ($currency ?: self::currencySymbol()).$number;
+        return self::prefix($currency).$number;
     }
 
     public static function input(?int $amount): string
@@ -51,16 +62,23 @@ class Money
 
     public static function currencyCode(): string
     {
-        return (string) config('marketplace.currency.code', 'USD');
+        return Currency::from((string) config('marketplace.currency.code', 'USD'), (int) config('marketplace.currency.minor_unit', 2))->code;
     }
 
     public static function currencySymbol(): string
     {
-        return (string) config('marketplace.currency.symbol', '$');
+        return (string) config('marketplace.currency.symbol', self::currencyCode().' ');
     }
 
     private static function minorUnit(): int
     {
         return max(0, (int) config('marketplace.currency.minor_unit', 2));
+    }
+
+    private static function prefix(?string $currency = null): string
+    {
+        $prefix = $currency ?: self::currencySymbol();
+
+        return preg_match('/^[A-Z]{3}$/', $prefix) ? $prefix.' ' : $prefix;
     }
 }

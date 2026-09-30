@@ -20,7 +20,7 @@ class PostVendorRefundDebit
                 ->lockForUpdate()
                 ->findOrFail($allocation->id);
 
-            if ($allocation->refund?->status !== RefundStatus::Succeeded || ! $allocation->vendor_order_id || $allocation->amount <= 0) {
+            if (! $allocation->refund?->economicsRecognized() || ! $allocation->vendor_order_id || $allocation->amount <= 0) {
                 return null;
             }
 
@@ -33,6 +33,8 @@ class PostVendorRefundDebit
             if (! $vendorOrder || (int) $vendorOrder->id !== (int) $allocation->vendor_order_id) {
                 return null;
             }
+
+            $vendorOrder = \App\Models\VendorOrder::whereKey($vendorOrder->id)->lockForUpdate()->firstOrFail();
 
             Vendor::query()->whereKey($vendorOrder->vendor_id)->lockForUpdate()->firstOrFail();
 
@@ -47,7 +49,7 @@ class PostVendorRefundDebit
                 'vendor_id' => $vendorOrder->vendor_id,
                 'source_key' => $sourceKey,
                 'type' => VendorLedgerEntryType::Refund,
-                'amount' => -1 * (int) $allocation->amount,
+                'amount' => -1 * (int) ($allocation->seller_amount ?? $allocation->amount),
                 'currency' => $allocation->refund->currency,
                 'available_at' => $allocation->refund->processed_at ?? now(),
                 'vendor_order_id' => $vendorOrder->id,
@@ -63,6 +65,7 @@ class PostVendorRefundDebit
                 'metadata' => [
                     'allocation_type' => $allocation->type->value,
                     'refund_number' => $allocation->refund->refund_number,
+                    'commission_id_at_refund' => $vendorOrder->commission()->lockForUpdate()->value('id'),
                 ],
             ]);
         }, 3);

@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Vendor;
 use App\Services\Refunds\RefundFinancials;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class OrderController extends Controller
@@ -15,6 +19,9 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::enum(OrderStatus::class)],
+            'payment_status' => ['nullable', Rule::enum(PaymentStatus::class)],
+            'vendor_id' => ['nullable', 'integer', 'exists:vendors,id'],
         ]);
 
         $search = $validated['q'] ?? null;
@@ -28,17 +35,27 @@ class OrderController extends Controller
                         ->orWhereHas('vendorOrders', fn (Builder $query) => $query->where('vendor_order_number', 'like', "%{$search}%"))
                         ->orWhereHas('user', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
                 }))
+                ->when(filled($validated['status'] ?? null), fn (Builder $query) => $query->where('status', $validated['status']))
+                ->when(filled($validated['payment_status'] ?? null), fn (Builder $query) => $query->where('payment_status', $validated['payment_status']))
+                ->when(filled($validated['vendor_id'] ?? null), fn (Builder $query) => $query->whereHas('vendorOrders', fn (Builder $query) => $query->where('vendor_id', $validated['vendor_id'])))
                 ->latest('placed_at')
                 ->latest()
                 ->paginate(20)
                 ->withQueryString(),
-            'filters' => ['q' => $validated['q'] ?? ''],
+            'vendors' => Vendor::query()->orderBy('display_name')->get(['id', 'display_name']),
+            'filters' => [
+                'q' => $validated['q'] ?? '',
+                'status' => $validated['status'] ?? '',
+                'payment_status' => $validated['payment_status'] ?? '',
+                'vendor_id' => $validated['vendor_id'] ?? '',
+            ],
         ]);
     }
 
     public function show(Order $order, RefundFinancials $refundFinancials): View
     {
         $order->load([
+            'walletTransactions',
             'user',
             'payment.refunds.allocations.vendorOrder.vendor',
             'payment.refunds.allocations.orderItem',

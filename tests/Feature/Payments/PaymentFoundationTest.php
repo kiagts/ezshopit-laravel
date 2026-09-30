@@ -631,7 +631,8 @@ class PaymentFoundationTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(19, Payment::query()->count());
+        $this->assertSame(19, Payment::query()->whereHas('order', fn ($q) => $q->where('order_number', 'not like', 'DEMO-REFUND-%'))->count());
+        $this->assertSame(4, Payment::query()->whereHas('order', fn ($q) => $q->where('order_number', 'like', 'DEMO-REFUND-%'))->count());
         $this->assertSame(0, PaymentAttempt::query()->count());
         $this->assertSame(7, Payment::query()->where('method', PaymentMethod::CashOnDelivery)->where('status', PaymentStatus::Pending)->count());
         $this->assertSame(3, Payment::query()
@@ -644,10 +645,10 @@ class PaymentFoundationTest extends TestCase
         $this->assertSame(2, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::Paid)->count());
         $this->assertSame(2, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::PartiallyRefunded)->count());
         $this->assertSame(2, Payment::query()->where('method', PaymentMethod::Card)->where('status', PaymentStatus::Refunded)->count());
-        $this->assertSame(6, Refund::query()->count());
-        $this->assertSame(4, Refund::query()->where('status', RefundStatus::Succeeded)->count());
-        $this->assertSame(1, Refund::query()->where('status', RefundStatus::Pending)->count());
-        $this->assertSame(1, Refund::query()->where('status', RefundStatus::Failed)->count());
+        $this->assertSame(6, Refund::query()->whereNull('idempotency_key')->count());
+        $this->assertSame(4, Refund::query()->whereNull('idempotency_key')->where('status', RefundStatus::Succeeded)->count());
+        $this->assertSame(1, Refund::query()->whereNull('idempotency_key')->where('status', RefundStatus::Pending)->count());
+        $this->assertSame(1, Refund::query()->whereNull('idempotency_key')->where('status', RefundStatus::Failed)->count());
         $this->assertDatabaseCount('vendor_order_commissions', 3);
         $this->assertDatabaseHas('refunds', ['refund_number' => 'REF-DEMO-LIFE-COMMISSION-ADJUSTED']);
         $this->assertDatabaseHas('commission_adjustments', ['commissionable_amount_delta' => -1500, 'commission_amount_delta' => -120]);

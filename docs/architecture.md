@@ -57,6 +57,20 @@ Successful login and guest access to `/login` or `/register` redirect users thro
 
 Authorization should grow through Laravel policies, gates, middleware, and form requests. Do not create separate authentication systems for admins, vendors, and customers.
 
+## Customer Account
+
+Customer self-service lives under `/account` and uses the same `web` guard plus `role:customer` middleware as the authentication foundation. Admins and vendors receive `403 Forbidden` for customer account routes; guests are redirected to login.
+
+The account area is a Blade/Tailwind experience with a shared account layout, mobile account navigation, and `noindex,nofollow` metadata. It is not a second frontend application and does not introduce Vue or a separate API.
+
+`App\Services\Account\CustomerAccountDashboardService` prepares the dashboard summary so controllers do not accumulate inline queries. The dashboard shows real customer-scoped counts for orders, wishlist items, delivered purchases awaiting review, unread notifications, latest orders, the default delivery address, and recent notifications.
+
+Customer orders are read-only except for existing customer-safe actions such as unpaid order cancellation and card payment retry. Order detail pages render order snapshots, seller group snapshots, shipping snapshots, payment status, refunds visible to the customer, and review actions for delivered items. They do not expose provider references, internal refund operations, vendor earnings, commissions, ledger entries, or admin-only financial data.
+
+Profile completion is intentionally narrow: customers may update only their name and email address. Role, password, moderation state, and financial data are not accepted from the profile request. Password changes live on the security page, require the current password through Laravel's `current_password:web` validation rule, use Laravel password defaults, and keep the current session active.
+
+Wishlist, reviews, addresses, notifications, order history, profile, and security remain scoped to the authenticated customer. Ownership is enforced in controllers, form requests, policies, or model-scoped queries as appropriate; navigation visibility is not treated as authorization.
+
 ## Vendor Onboarding And Approval
 
 Vendor identity is split between `users` and `vendors`.
@@ -99,6 +113,81 @@ Vendor branding uploads use Laravel's `public` disk and store relative paths und
 - `vendors/{vendor_id}/banner`
 
 Old logo/banner files are deleted when replaced. Original upload filenames are not trusted.
+
+## Vendor Dashboard And Seller Operations
+
+The Vendor Dashboard is an operational presentation layer over existing seller domains. It does not introduce a duplicate financial, fulfillment, inventory, promotion, or product source of truth. `/vendor` renders through `App\Services\VendorDashboard\VendorDashboardService`, which centralizes summary queries and keeps the dashboard controller thin.
+
+Vendor routes use one `web` guard and `role:vendor`. Draft, pending, rejected, and suspended vendors keep access to onboarding/status, notifications, and payout history routes that are safe for their state. Approved-only routes keep the `vendor.approved` middleware for seller mutations and operational modules such as product management, inventory changes, promotions, fulfillment actions, payout requests, and store profile edits. Suspended vendors are redirected to application status for approved-only areas.
+
+The dashboard metrics are real vendor-scoped data:
+
+- Active Products: the vendor's `Product` rows with `status = active` and `approval_status = approved`.
+- Orders Requiring Action: the vendor's own `VendorOrder` rows in pending, confirmed, processing, or ready-to-ship statuses.
+- Low Stock Variants: the vendor's inventory rows using the existing `Inventory::lowStock()` rule, where available stock is positive and at or below threshold.
+- Available Balance and Pending Balance: values from `VendorEarningsService`, backed by `VendorLedgerEntry` and currency-specific integer minor units.
+- Payout reservations and requestable balance: values from `VendorPayoutBalanceService`, so active payout reservations are not recalculated in Blade.
+
+Dashboard links route into the authoritative modules: products, inventory, vendor orders, promotions, reviews, earnings, commissions, payouts, notifications, and store profile. It does not place fulfillment or financial mutation buttons on the overview; those actions remain on the existing detail pages and Actions.
+
+Product attention states are counts for draft, pending approval, rejected, and inactive products. Rejected and pending products link into existing product filters, and product moderation still belongs to the Product workflow.
+
+Vendor order summaries use `VendorOrder` records, not parent order totals. The dashboard shows safe customer names only and avoids full delivery address, customer email, provider references, and cross-seller order data. Full shipping snapshots are only shown on the seller order detail page where fulfillment needs them.
+
+Finance presentation uses Vendor Ledger services. The Vendor Ledger remains authoritative for gross sales, commission, promotion debits, refunds, commission refunds, payouts, available balance, pending balance, and net earnings. Commission pages remain read-only for vendors and display historical/snapshotted commission records.
+
+Reviews are read-only for vendors. The dashboard label is `Average Product Rating`, calculated as a weighted aggregate from product `rating_sum` and `rating_count`; it is intentionally not labeled as a seller/store rating.
+
+Store Profile lets approved vendors edit existing public identity fields such as display name, description, public email, phone, website, logo, and banner. Vendors cannot edit status, approval metadata, or slug through this route. Storefront layout, theme, CSS, JavaScript, fonts, checkout behavior, and marketplace structure remain marketplace-controlled.
+
+Multi-vendor privacy is mandatory across seller operations. Vendors may see only their products, inventory, `VendorOrder` rows, seller order items, refund allocations affecting their seller order, commission records, ledger entries, payouts, promotions, reviews, notifications, and store profile. Request IDs are never trusted as ownership proof; controllers, policies, form requests, and vendor-scoped queries enforce access.
+
+Deferred seller features remain out of scope: seller staff accounts, granular seller permissions, customer messaging, support tickets, returns/RMA, courier integrations, shipping labels, bulk imports, bulk inventory uploads, financial exports, invoices, tax reports, advanced analytics, custom storefront themes, and automatic payouts.
+
+## Admin Dashboard And Marketplace Operations
+
+The Admin Dashboard is an orchestration and observation layer over existing marketplace domains. It does not create a second source of truth for commerce, fulfillment, payments, refunds, commission, seller ledger, payouts, product moderation, vendor moderation, or notifications. `/admin` renders through `App\Services\AdminDashboard\AdminDashboardService`, while grouped sidebar badges use `App\Services\AdminDashboard\AdminNavigationCounterService`.
+
+Admin routes continue to use the single `web` guard plus `role:admin`. Customers and vendors receive `403 Forbidden`, guests are redirected to login, and admin pages include `noindex,nofollow`.
+
+Admin navigation is grouped into:
+
+- Overview: Dashboard.
+- Marketplace: Vendors, Products, Categories, Brands, Attributes, Attribute Sets, Inventory, Shipping.
+- Commerce: Orders, Payments, Refunds, Promotions, Reviews.
+- Finance: Commission Rules, Commissions, Vendor Ledger, Payouts.
+- Operations: Notifications.
+
+The dashboard prioritizes current operational state:
+
+- Vendor Approval Queue: `vendors.status = pending`.
+- Product Moderation Queue: `products.approval_status = pending`.
+- Review Moderation Queue: `product_reviews.status = pending`.
+- Payment Review Queue: payments with `requires_review_at` set and `review_resolved_at` still null.
+- Refund Queue: refunds in pending, processing, or failed status.
+- Payout Queue: payouts in pending, approved, or processing status.
+
+Dashboard summary metrics are intentionally conservative. Approved Vendors counts `vendors.status = approved`; Active Products counts active and approved products; Orders Today counts orders placed today; Gross Order Value sums immutable `orders.grand_total` for the marketplace currency and is not labeled revenue. Commission figures use `VendorOrderCommission`, `CommissionAdjustment`, and Vendor Ledger entries; they are not profit metrics.
+
+Admin lifecycle actions remain explicit. Vendor moderation uses `ApproveVendor`, `RejectVendor`, `SuspendVendor`, and `ReactivateVendor`. Product moderation uses `ApproveProduct` and `RejectProduct`. Review moderation uses review approval/rejection Actions. Payout transitions use the Prompt 28 payout Actions. The admin dashboard links to detail pages and does not add generic status dropdowns, parent order status mutation, ledger editing, or one-click financial mutation from overview cards.
+
+Financial source of truth remains split by domain responsibility:
+
+```text
+Orders -> immutable commerce snapshots
+Payments / Refunds -> customer money movement
+Commission -> marketplace fee snapshots and adjustments
+Vendor Ledger -> seller financial truth
+Payout -> seller cash-out lifecycle
+```
+
+Admin Vendor detail shows compact operational counts and ledger-derived financial context, then links to the dedicated Vendor Financials and Vendor Ledger pages. The Vendor Ledger remains append-only and read-only from Admin UI.
+
+Sensitive data exposure is limited to operational need. Admin payment pages may show provider references and attempt state but never secrets, card data, or webhook signing material. Payout index pages use masked destination context; payout detail may show destination snapshot data needed for manual processing. Customers and other vendors never see payout destination data.
+
+Admin filters are scoped and whitelisted per module. Large admin lists paginate and preserve filters. Search inputs are bounded strings and do not allow dynamic column selection or arbitrary sorting.
+
+Deferred admin features remain out of scope: impersonation, multiple admin role/permission matrix, generic audit logs, support/ticketing, returns/RMA, disputes/chargebacks, courier management, tax engine, accounting exports, invoices, advanced BI, marketplace general ledger, global cross-domain search, and bulk operations.
 
 ## Category Management
 
@@ -1403,6 +1492,55 @@ Payout processing is operational/manual in Prompt 28. There is no Stripe Connect
 
 `php artisan vendor-payouts:reconcile` repairs missing payout ledger debits for payouts already marked paid and reports duplicate payout debit discrepancies. It does not mark processing payouts paid or otherwise change payout statuses.
 
+## Coupons And Promotions
+
+Promotions are coupon-code based in this foundation. One cart can hold one applied coupon through `carts.promotion_id`; applying a second valid coupon replaces the first, while an invalid replacement leaves the existing coupon untouched. Applying a coupon does not consume usage. Usage is consumed only when checkout successfully creates an order.
+
+Promotion codes are normalized server-side and represented by `Promotion` with:
+
+- funding source: `marketplace` or `vendor`
+- discount type: percentage basis points or fixed minor-unit amount
+- optional usage limit and per-customer limit
+- optional start/end timestamps
+- optional minimum eligible spend and maximum discount
+- optional product and category targets
+
+Money remains integer minor units. Percentage discounts are stored as basis points, so 10% is `1000`. The calculation order is:
+
+```text
+effective variant price -> merchandise subtotal -> promotion discount -> shipping -> grand total
+```
+
+Shipping is not discounted. `orders.items_subtotal`, `vendor_orders.items_subtotal`, and `order_items.line_total` remain pre-discount merchandise values. Discount data is explicit through `discount_total`, `marketplace_discount_total`, `vendor_discount_total`, `net_line_total`, `promotion_redemptions`, and `order_discount_allocations`.
+
+Promotion eligibility is evaluated from the current cart lines. Product and category scopes use OR behavior. Category scopes include the selected category and descendants. Vendor-funded promotions apply only to items owned by the funding vendor. Marketplace-funded promotions may span vendors, subject to product/category scope.
+
+Discount allocations are deterministic and proportional by eligible cart line, using integer math and stable remainder ordering. Checkout revalidates the applied promotion inside the order transaction after locking the promotion row. A successful checkout writes:
+
+```text
+Order discount snapshot
+VendorOrder discount snapshot
+OrderItem discount snapshot
+OrderDiscountAllocation rows
+PromotionRedemption row
+```
+
+These snapshots are immutable historical order data. Later promotion edits do not rewrite placed orders.
+
+Marketplace-funded discounts reduce the customer payable total but do not reduce seller commercial value, commission basis, or vendor ledger sale value. Vendor-funded discounts reduce the seller-attributed merchandise basis and are posted as a separate vendor ledger promotion debit when vendor earnings are recognized:
+
+```text
+vendor-order:{id}:promotion
+```
+
+The existing `vendor-ledger:reconcile` command replays vendor order earnings idempotently and includes missing vendor promotion debit entries. There is no marketplace subsidy ledger in this prompt.
+
+Refund capacity for discounted order items uses the customer-paid line amount. Refund allocations also store a seller-attributed amount so marketplace-funded discounts can preserve the correct vendor financial reversal basis while vendor-funded discounts do not overstate seller value.
+
+Admin promotion management lives under `/admin/promotions`. Admins can create marketplace-funded coupons and vendor-funded coupons for a selected approved vendor. Vendor promotion management lives under `/vendor/promotions`; vendors can create only vendor-funded coupons for their own catalog. Customer and cross-vendor access is blocked by existing role and ownership checks.
+
+Automatic promotions, coupon stacking, free shipping promotions, BOGO, loyalty, gift cards, referrals, store credit, campaign analytics, approval workflow, marketplace GL/subsidy accounting, and promotion notifications are deferred.
+
 ## Verified Reviews And Ratings
 
 Product reviews are tied to verified delivered purchases. A customer can review only an `OrderItem` that belongs to their own order and whose `VendorOrder` is delivered. Refunded delivered purchases remain reviewable because a refund does not erase the historical purchase or delivery evidence.
@@ -1430,7 +1568,69 @@ Product rating aggregates live on `products.rating_sum` and `products.rating_cou
 
 Public product detail pages show approved reviews only, including the verified purchase badge, safe display name, rating distribution, sorting, pagination, and JSON-LD `AggregateRating` only when at least one approved review exists. Product cards show ratings only from real approved aggregate data; they do not display placeholder or fake ratings.
 
-This module rates products, not sellers or stores. Review media, video reviews, vendor replies, helpful votes, reporting/abuse workflows, AI moderation, notifications, rating-based discovery ranking, and seller/store ratings are deferred.
+This module rates products, not sellers or stores. Review media, video reviews, vendor replies, helpful votes, reporting/abuse workflows, AI moderation, rating-based discovery ranking, and seller/store ratings are deferred.
+
+## Notifications
+
+Laravel native notifications provide the marketplace notification foundation. `users` remain the only notifiable identity table, so customer, vendor, and admin notifications all route to `User` records. Vendor notifications currently go to the owning vendor user; future multi-user vendor staff routing can extend this recipient resolver without changing notification payloads.
+
+The core reliability rule is:
+
+```text
+Business transaction
+-> commit
+-> notification dispatch
+-> Laravel database/mail channels
+```
+
+Notification delivery is treated as a side effect. Domain Actions update authoritative business state first, and `App\Services\Notifications\SendUniqueNotification` defers dispatch with `DB::afterCommit()` whenever it is called inside an open transaction. Notification exceptions are logged with safe recipient/source metadata and do not roll back orders, payments, refunds, payouts, reviews, products, or vendor application state.
+
+In-app notifications use Laravel's standard `notifications` table. `notification_dispatches` stores one source key per recipient/event and has a unique constraint on:
+
+```text
+notifiable_type
+notifiable_id
+source_key
+```
+
+This prevents duplicate logical notifications from repeated webhooks, retried payout transitions, or repeated domain calls. The source key is also copied into the notification data payload for auditability.
+
+Notification payloads are intentionally small:
+
+```text
+type
+title
+message
+action_url
+severity
+source_key
+```
+
+They must not include full Orders, addresses, raw Stripe/provider payloads, card details, banking details, customer contact details, passwords, exception stacks, or vendor-private financial allocation data. `action_url` values are generated as internal relative routes only; the open route marks the notification read and refuses external or malformed redirects. Destination routes still enforce their normal role, policy, and ownership checks.
+
+Implemented channels:
+
+- Database notifications for customer, vendor, and admin notification centers.
+- Mail notifications for important transactional events such as order placement, payment success/failure, order shipment/delivery, order cancellation, customer refund success/failure, vendor new order, payout paid/rejected, and vendor account status updates.
+- Database-only notifications for lower-noise operational events such as review moderation, product moderation, vendor refund alerts, product review submission, admin payout requests, vendor/product submissions, and payment review alerts.
+
+Queued notifications implement Laravel `ShouldQueue`. The default queue connection is environment-driven through `QUEUE_CONNECTION`; production should run a queue worker such as `php artisan queue:work`. The default mailer is environment-driven through `MAIL_MAILER`; local/demo environments use the log mailer unless configured otherwise.
+
+Notification centers live at:
+
+```text
+/account/notifications
+/vendor/notifications
+/admin/notifications
+```
+
+Each center lists newest notifications first, paginates results, supports an unread filter, marks individual notifications read, marks all current-user notifications read, and scopes all reads/opens through the authenticated user's own notification relationship. Customer account navigation, the customer header, the vendor layout, and the admin layout show unread counts.
+
+Multi-vendor semantics are explicit. A vendor order notification references only that seller's `VendorOrder`; it must not expose other sellers in the parent order. Customer shipment and delivery notifications describe the specific seller portion of the order rather than pretending the whole parent order changed if only one seller group moved.
+
+Reconciliation commands such as `commissions:reconcile`, `vendor-ledger:reconcile`, and `vendor-payouts:reconcile` repair derived financial state and do not replay normal customer/vendor/admin lifecycle notifications.
+
+Deferred notification areas remain separate: SMS, WhatsApp, browser push, mobile push, WebSockets, newsletters, marketing campaigns, notification preference matrices, email template CMS, localization, and automated retention/pruning.
 
 ## Product Detail
 
@@ -1485,6 +1685,107 @@ Product cards now default to `storefront.products.show`, so homepage, category, 
 
 Color/value-level media mapping is still a future improvement. Current media switching is variant-specific: variant images belong to concrete `ProductVariant` records.
 
+## Homepage CMS & Merchandising
+
+The homepage is backed by a controlled typed-section CMS. It is intentionally not a raw page builder and does not allow arbitrary HTML, CSS, JavaScript, Tailwind classes, SQL, Blade names, or PHP class names in the database.
+
+The current audited homepage sections are:
+
+- Public header, search, account/cart controls, navigation, and footer: static application shell.
+- Hero intro with three promotional slider groups: CMS content section, `HomepageSectionType::Hero`.
+- Shop by Category: marketplace entity merchandising, `HomepageSectionType::Categories`.
+- Promotion grid: CMS campaign content, `HomepageSectionType::PromotionGrid`.
+- Featured Products carousel: marketplace product merchandising, `HomepageSectionType::Products`.
+- Featured Product Showcase: marketplace product merchandising, `HomepageSectionType::ProductShowcase`.
+- Featured Brands: marketplace brand merchandising, `HomepageSectionType::Brands`.
+- Featured Stores: marketplace vendor merchandising, `HomepageSectionType::Vendors`.
+- Promotional banner slider: CMS campaign content, `HomepageSectionType::BannerSlider`.
+- New Arrivals carousel: computed/live product merchandising, `HomepageSectionType::Products` with `source=latest`.
+- Trust/service strip: CMS repeated content, `HomepageSectionType::Benefits`.
+- Seller CTA / Ready to Grow block: CMS CTA content, `HomepageSectionType::ReadyToGrow`.
+
+Core storage:
+
+```text
+HomepageSection
+    -> typed settings JSON
+    -> HomepageSectionItem for real marketplace entities
+    -> HomepageSectionContentItem for repeated campaign/content cards
+```
+
+`homepage_sections.key` is a stable unique identifier such as `hero`, `featured-products`, or `ready-to-grow`. `type` is cast to `App\Enums\HomepageSectionType`, and settings are validated through `App\Services\Homepage\HomepageSectionSchema`. Unknown non-empty settings are rejected so a request cannot smuggle renderer configuration, raw markup, or script-like behavior into a section.
+
+Marketplace entity merchandising uses `homepage_section_items` with controlled item types from `App\Enums\HomepageSectionItemType`:
+
+```text
+product
+category
+vendor
+brand
+```
+
+The database stores references only. Product names, prices, stock state, ratings, category names, brand names, and store names remain live marketplace data. A selected entity does not become public just because Admin selected it for the homepage. Public rendering still applies the existing visibility rules:
+
+- products must pass `Product::publiclyVisible()`
+- vendors/stores must be approved
+- categories must be active with active ancestry where applicable
+- brands must be active
+
+If selected entities later become unavailable, the public homepage skips them. Empty entity sections do not render public shells.
+
+Content sections use `homepage_section_content_items` for campaign slides, promotion cards, banner slides, and benefits. Content text renders escaped. CTA URLs must be internal relative URLs or HTTP/HTTPS URLs; `javascript:` and `data:` are rejected. Uploaded content images use Laravel Storage under `homepage/{section_id}` and accept only `jpg`, `jpeg`, `png`, and `webp` within the configured validation limit. Seeded/demo media remains referenced as relative storage paths and is not overwritten by Admin uploads.
+
+Visibility is derived, not persisted as a separate status:
+
+```text
+visible =
+    is_enabled
+    and starts_at is null or starts_at <= now
+    and ends_at is null or ends_at >= now
+```
+
+Expired sections do not automatically mutate `is_enabled`; the schedule remains an Admin configuration.
+
+Rendering flow:
+
+```text
+Storefront\HomeController
+    -> App\Services\Homepage\HomepageService
+    -> resolved typed section payloads
+    -> resources/views/storefront/home.blade.php
+    -> resources/views/storefront/home/sections/{type}.blade.php
+    -> reusable storefront components
+```
+
+Blade section partials do not query the database. `HomepageService` prepares active sections, resolves product/category/vendor/brand data with eager loading, applies per-section limits, preserves curated order, and collects wishlisted product IDs for the resolved product sets. Product presentation continues to use the existing ProductCard and pricing/rating behavior. The product showcase uses a real public Product payload for the large card; the old hardcoded demo product fallback was removed.
+
+Admin management lives under:
+
+```text
+/admin/homepage
+/admin/homepage/preview
+/admin/homepage/sections/create
+/admin/homepage/sections/{section}/edit
+```
+
+Only Admin users may manage or preview homepage CMS content. Vendors cannot feature their own products or stores directly; homepage merchandising remains Admin-controlled. The Admin preview route is protected by the normal Admin middleware and may show disabled, scheduled, and expired saved sections for review. There is no public `?preview=1` mode.
+
+The seeder `Database\Seeders\HomepageSeeder` recreates the audited homepage with stable keys and is idempotent. Running `php artisan db:seed` updates seeded sections/content instead of duplicating them.
+
+Adding a new homepage section type later should follow this workflow:
+
+1. Add a `HomepageSectionType` enum case.
+2. Add type-specific allowed settings and validation in `HomepageSectionSchema`.
+3. Add Admin form fields for that type.
+4. Add a resolver branch in `HomepageService` only if the type needs special data preparation.
+5. Add a Blade renderer under `resources/views/storefront/home/sections`.
+6. Seed any default content.
+7. Add public rendering, Admin validation, and visibility tests.
+
+Admin controls what appears, when it appears, and in what order. Developers control structural layout, design system classes, component behavior, and safe renderer mappings.
+
+Deferred CMS features: unrestricted page builder, arbitrary HTML editor, arbitrary CSS/JS, full WYSIWYG, version history, rollback, A/B testing, personalization, recommendation engine, behavioral merchandising, segmentation, localization, multi-language CMS, full rich-text CMS, full sitewide CMS, and advanced campaign analytics.
+
 ## Frontend Strategy
 
 Blade is the default rendering layer. Laravel should own URLs and navigation. Tailwind CSS 4 provides the design foundation through `resources/css/app.css`.
@@ -1525,6 +1826,14 @@ Avoid excessive gradients, decorative glass effects, oversized rounded corners, 
 
 ## Testing And Quality
 
+## Site Settings & Marketplace Configuration
+
+Legitimate display settings use a typed developer-controlled `SettingsRegistry`, with code defaults overridden by the `settings` table and resolved through cached `SettingsService` access. Groups cover general marketplace name/tagline, public contact details, SEO defaults, selected social URLs, and products-per-page presentation. Unknown keys are ignored and there is no generic setting creation UI. Settings never store secrets or edit `.env`/PHP config. Currency remains developer-managed because orders, payments, refunds, commissions, and payouts persist currency snapshots; commission, promotions, shipping, tax, inventory, and payout rules remain dedicated domains. Header/footer and public SEO consume effective settings through view composers; cache invalidates after updates.
+
+## Static & CMS Pages
+
+Informational content is managed by `CmsPage` and ordered typed `CmsPageSection` records, with structured `CmsFaqItem` rows for help content. CMS pages use `/pages/{slug}` to avoid collisions with marketplace, account, vendor, and admin routes. Reserved slugs are rejected in the service layer. Pages support draft, published, and derived scheduled states (`published` with a future `published_at`), SEO metadata, preview, and lightweight header/footer eligibility. Public rendering uses the storefront layout and escapes all text; section types are mapped to application-controlled renderers, with no raw HTML, arbitrary Blade, CSS, or JavaScript. The CMS does not control transactional screens or marketplace business logic. Full navigation management, nested menus, revisions, localization, media libraries, and unrestricted page builders remain deferred.
+
 Use the existing Laravel test stack:
 
 - `php artisan optimize:clear`
@@ -1533,3 +1842,275 @@ Use the existing Laravel test stack:
 - `php artisan route:list` when route changes are made
 
 Add tests alongside real behavior as modules are introduced. Keep early tests focused on user-visible behavior and critical domain rules.
+## Navigation, Header, Mega Menu & Footer
+
+Navigation is stored in developer-defined `NavigationMenu` locations (`header`, `footer_shop`, `footer_help`, `footer_sellers`, and `footer_company`) with controlled `NavigationItem` link types: route, category, CMS page, and validated HTTPS external links. `NavigationService` resolves and caches active targets, so Blade receives ready-to-render links and unavailable or unpublished references disappear automatically. The mega menu is category-driven from the active root and immediate-child hierarchy; categories are never duplicated into navigation records. Header branding and footer content come from the Settings service, while CMS pages remain the source for managed informational links. Mobile navigation reuses the same data through the existing drawer and accordion interaction. Advanced search suggestions, personalization, localization, analytics, newsletters, and theme-builder features remain deferred.
+## Search & Product Discovery
+
+Storefront discovery is database-backed for the MVP. `ProductDiscoveryService` centralizes public visibility, keyword matching, category/brand/vendor context, variant-aware pricing, attributes, sorting, and pagination. Query parameters are validated by `ProductDiscoveryRequest`, and all sort choices are mapped to controlled expressions. Predictive search is provided by `/search/suggestions`, returning small, visibility-safe product, category, brand, and approved-store results after two characters. Search pages remain progressively enhanced server-rendered views; dedicated search infrastructure, AI ranking, personalization, history, analytics, and typo-tolerance are deferred until catalog scale justifies them.
+## Security & Production Readiness
+
+Web responses include baseline security headers (`nosniff`, same-origin framing, strict referrer policy, and a restricted permissions policy). CSRF protection remains enabled except for the signature-verified Stripe webhook. Authentication throttles login attempts, role middleware and policies enforce tenant boundaries, and uploaded images are validated by MIME/type and size rules. Production deployments should set `APP_DEBUG=false`, use HTTPS with `SESSION_SECURE_COOKIE=true`, rotate secrets, and run queue workers for database-backed jobs. The current MVP uses SQLite/database cache and queue drivers without introducing infrastructure prematurely.
+## Launch Product Architecture Roadmap
+
+The current modular monolith remains the compatibility foundation for launch extensions. Money is persisted as integer minor units with a single configured marketplace currency; `App\Support\Currency` now validates ISO-4217-style metadata without changing current checkout behavior. Future market, currency, language, tax, wallet, gift-card, returns, disputes, invoice, seller-finance, analytics, export, and mobile API modules must be introduced incrementally with additive migrations and immutable order/payment snapshots. Payment gateways and courier integrations remain provider-selection decisions. No wallet, gift-card, return, dispute, invoice, or ledger tables are created prematurely.
+
+Migration sequence: establish market/currency context, then tax rules and customer financial instruments, followed by returns/refunds/disputes and documents, then reporting and APIs. Existing orders, commissions, payouts, checkout, search, CMS, navigation, and settings remain backward compatible throughout.
+## Multi-Country / Market Foundation
+
+`Market` provides a stable commercial context with normalized code, ISO country, default currency metadata, activation, default selection, and ordering. `MarketService` resolves the active session market or the active default market and caches public market lists. Guests and authenticated users may switch markets through the POST `/market` endpoint; invalid or inactive selections fall back safely. Prompt 44 intentionally does not alter pricing, checkout currency, taxes, shipping, catalog ownership, or transactional snapshots. Those integrations belong to later prompts.
+## Multi-Currency
+
+Currencies are identified by uppercase ISO codes and configured as database metadata (`currencies`). Exchange-rate storage uses decimal precision with the convention `1 BASE = RATE QUOTE`; no external FX provider is integrated. `CurrencyContext` resolves a session-selected currency with safe fallback to the current Market default and legacy currency. The `/currency` endpoint validates selections. Existing order, payment, commission, payout, promotion, shipping, and checkout amounts remain immutable integer minor units; conversion and provider settlement behavior are introduced incrementally in later prompts.
+
+`CurrencyConverter` performs explicit-rate conversion using integer minor units, decimal-rate parsing, target minor-unit scaling, and deterministic half-up rounding. Missing rates raise an error; no 1:1 fallback is used. Product and checkout price conversion remains opt-in until catalog price storage and transaction currency policies are migrated together.
+
+Prompt 45C activates storefront pricing: product variants carry a backfilled `currency_code` (legacy USD), and `ProductVariant::storefrontPrice()` converts base/sale prices through the resolved `CurrencyContext`. Product aggregates and cart evaluation therefore use the selected currency, while order and financial records retain their transaction currency snapshots.
+## Multilingual & Localization
+
+Languages are managed as active metadata records with stable codes, native names, direction (`ltr`/`rtl`), ordering, and one default language. `LanguageContext` resolves a session-selected language with safe fallback, while `SetRequestLanguage` sets Laravel's locale once per web request. The public POST `/language` switch is guest-compatible and preserves market, currency, carts, and financial data. The layout emits language and direction metadata. Product/CMS translation tables and broad content translation workflows remain additive follow-up work.
+## Multi-Country Tax Engine
+
+Tax is modeled through reusable `TaxClass` and country/region-aware `TaxRule` records. `TaxEngine` resolves the highest-priority active rule and calculates tax in integer minor units using basis points. Order and vendor-order tax snapshot columns preserve historical totals. The engine is provider-independent and does not introduce external tax services; future checkout integration can apply class assignment and tax-inclusive/exclusive policy without rewriting financial history.
+
+Products may reference a tax class. Cart evaluation resolves the customer's default delivery country, applies the active tax rule to discounted line amounts, exposes tax and grand totals, and snapshots `orders.tax_total` at placement. Products without a tax class remain zero-tax, preserving existing behavior.
+## Customer Wallet & Store Credit
+
+Wallets are currency-isolated customer store credit with an immutable, actor-attributed ledger. Admins can credit, debit, freeze, and review customer wallets; customers see paginated history. Checkout stores an opt-in for preview, then `PlaceOrder` locks the order and wallet together, rechecks balance, writes an order-referenced debit, and snapshots `orders.wallet_applied_total`. Full funding creates an internal paid wallet payment; partial funding keeps the existing payment flow for the remainder. Cancellation creates an idempotent compensating reversal capped at original wallet funding. Wallet funding does not alter tax, promotions, shipping, vendor totals, commission, or vendor ledgers. No FX, withdrawals, transfers, or vendor wallets are implemented.
+
+Customer wallets are separate from vendor ledgers. Each customer has one wallet per currency and an immutable `wallet_transactions` ledger. Available balance is derived from credits, debits, reversals, and adjustments; no balance column is authoritative. `WalletService` enforces active-wallet and sufficient-balance checks and supports idempotent transaction keys. The account wallet view is read-only until checkout wallet tender and admin credit workflows are introduced.
+## Gift Cards
+
+Gift cards are separate stored value from promotions and customer wallets. Codes are normalized and SHA-256 hashed; only the last four characters are stored for display. `GiftCardTransaction` is immutable and the balance is derived from issue, redeem, refund, and adjustment entries. Redemption locks the card row, checks active status, expiry, currency, and balance, then creates an order-referenced idempotent debit. Checkout applies gift-card value after the final tax/shipping/promotion total and after wallet funding, without changing those totals. Refund credits can be recorded against the original card, including expired or disabled cards, while new spending remains blocked.
+
+## Operational Returns — Prompt 50B
+
+### Existing foundation and scope
+
+The existing `returns`, `return_items`, and `return_histories` tables and models are extended additively. Existing dispute models/endpoints and financial refund actions remain in place. A return tracks physical operations; it does not credit money. Prompt 50C owns financial orchestration and Prompt 50D owns the remaining dispute operations.
+
+### Eligibility and quantities
+
+`ReturnEligibilityService` is the authoritative eligibility boundary. The customer must own the order, each item must belong to that order, and every item in one request must belong to the same VendorOrder. The service checks the historical `order_items.is_returnable` flag (default true), delivered VendorOrder status, and a real non-future `vendor_orders.delivered_at` timestamp. Missing delivery timestamps are rejected; there is no order-created-at fallback.
+
+The return window is `returns.window_days` in the existing Settings registry, default 30 days, administrator-configurable from 1 to 365. A request remains eligible through the exact delivery timestamp plus that duration. The boolean returnability snapshot is the minimal historical policy; this pass does not introduce a product policy builder.
+
+Remaining quantity is ordered/delivered item quantity minus return-item quantities whose parent request is neither rejected nor cancelled. Request creation locks the Order and selected OrderItem rows, then rechecks eligibility and quantities inside the transaction. Different vendors cannot be mixed. Cancelled/rejected requests release their quantities. Admin overrides recheck remaining quantities so a rejected request cannot reclaim quantities committed to a newer request.
+
+### Operational status machine
+
+`ReturnWorkflowService` owns request creation, transitions, and inspection. `ReturnStatus`, `ReturnReason`, and `ReturnCondition` constrain accepted values.
+
+- requested → approved, rejected, cancelled
+- approved → awaiting_return, cancelled (staff only at this stage)
+- awaiting_return → received
+- received → inspected (only through complete per-item inspection)
+- inspected → refund_pending (at least one refund resolution) or completed (no refund resolutions)
+- rejected → approved only as an Admin override with a reason and a new quantity check
+- refund_pending is a handoff boundary; no manual completion is exposed before financial processing
+- completed/cancelled are terminal; there is no general reopen function.
+
+Customers may cancel only their own requested returns. Rejection/override explanations require at least five characters. All new requests and transitions append ReturnHistory with actor ID, role, from/to status, public explanation, and timestamp. Model update/delete operations reject history mutation. Workflow events use a lightweight `ReturnStatusChanged` event dispatched after transaction commit. No messages, email, SMS, or push integrations were added.
+
+Legacy requests without items/vendor context remain visible to the owner and Admin. They cannot be advanced into an operational workflow; a customer may cancel a requested legacy record and submit an eligible item-based request. Existing rows are not fabricated or reassigned.
+
+### Customer, Vendor, and Admin UI
+
+A shared Blade presentation uses the existing account/vendor/admin layouts. Each role has a protected `/{role}/returns` list/detail with status, request/order reference, vendor, quantities, reason, evidence, timeline, and inspection. Staff lists support status, date, and return/order search; Admin also supports vendor/customer IDs. Order details show a Return an item link only if at least one item is eligible. The request page shows each item's eligibility and an item/quantity/reason/note/image form. Multi-item requests are supported by the backend; the launch form submits one item at a time.
+
+Vendor queries and policies scope access through the request's VendorOrder and approved vendor owner. Customer access is scoped to the request owner. Admins can review marketplace returns and view order-level dispute references; unscoped disputes are not leaked to vendors. All displayed customer/staff text is Blade-escaped. Notes entered in these forms are explicitly public explanations; this pass has no private-note field.
+
+### Evidence
+
+`ReturnEvidence` uses a relational table, generated filenames, the configured private Laravel `local` disk, and paths under `returns/{id}/evidence`. Uploads accept JPEG/PNG/WebP only, with image content and MIME validation, 5 MB per image. `returns.evidence_limit` is configurable from 1–5, default 5. The locked parent request serializes evidence-limit checks. Unsupported/SVG/executable uploads are rejected. Files are removed when the upload operation fails. Initial invalid uploads roll back request/history creation. Downloads use policies and private/no-store response headers; no public storage URL is exposed.
+
+### Inspection and inventory
+
+Staff may inspect a received return only, including every ReturnItem exactly once. Inspected quantity cannot exceed requested quantity. A not_received condition requires zero; other inspected conditions require a positive quantity. Conditions are uninspected, restockable, damaged, defective, missing_parts, wrong_item, not_received. Resolution is refund, reject, or no_action; replacement is not exposed.
+
+Only restockable inspected quantities invoke the existing `IncreaseInventory` action. It locks inventory and writes its normal before/after stock movement. Optional reference parameters added to that action preserve all existing callers. Return movements reference `return_item` and its ID; the movement reason includes return and order-item references. The ReturnItem stores a unique inventory-movement FK and restocked timestamp within the same transaction. The locked parent/item and received-only transition prevent repeated inspection/restocking. Damaged/defective/missing/wrong items stay outside sellable stock. There is no quarantine warehouse subsystem. Missing/archived original variants fail restocking safely rather than inventing substitute stock.
+
+### Financial and currency boundaries
+
+The return service never calls Wallet, Gift Card, payment, commission, payout, or vendor-ledger mutation services. It does not calculate or convert refund amounts. Item names/quantities refer to historical order snapshots. `refund_pending` means awaiting financial review, not a successful refund. Prompt 50C will link and orchestrate refunds and completion using the existing financial architecture.
+
+### Demo preservation
+
+`ReturnWorkflowSeeder` uses only existing delivered, within-window DEMO-LIFE order items with remaining quantity, and runs through the normal workflow. It seeds requested, awaiting_return, received, inspected/restockable, rejected, and refund_pending examples when valid items exist. Stable demo markers and order locks prevent duplication. It never creates replacement orders or fabricated quantities; insufficient eligible demo items are reported explicitly.
+
+The existing general seeders rebuilt demo orders and stock movements. `DatabaseSeeder` now detects an existing order database and calls only the additive return seeder, preserving operational history. A fresh database still receives the original demo setup before return examples. Subsequent additions to other demo domains should use their specific safe seeders; running the general seeder is no longer a destructive refresh of an operational database.
+
+### Verification boundaries
+
+Dedicated feature tests in `tests/Feature/Returns/OperationalReturnsTest.php` cover eligibility, ownership, quantities, transitions/override, history, all role screens, safe uploads, inspection/restocking, seeder repeatability, financial non-mutation, and existing dispute endpoints. Tests use SQLite memory databases; row-lock behavior is implemented for the configured MySQL application database. Simultaneous MySQL stress testing is not claimed by the feature suite.
+
+## Refund Financial Orchestration (Prompt 50C)
+
+`RefundService` extends the existing Refund domain. RefundAllocation continues to describe item/shipping/adjustment economics; the new RefundFundingAllocation records the destination of that money. Order.customer is the customer reference, Order.currency is the original transaction currency, and optional ReturnRequest links permit both inspected returns and manual order refunds without synthetic returns.
+
+Creation locks the order, payment and relevant items, validates ownership, collected payment, historical amounts and remaining capacities, then persists a pending refund and immutable destination instructions. Processing locks the order/refund and destination rows inside one database transaction. GiftCardService and WalletService restore their original funding; existing vendor ledger and commission actions post compensating entries in the same transaction. Failures roll back all financial effects. A reserved pending refund can be retried from Admin.
+
+### Historical calculation and rounding
+
+For each item, merchandise is OrderItem.customerLineTotal (historical line total minus allocated discount). Seller basis is sellerLineTotal (line total minus vendor-funded discount), which keeps marketplace-funded promotions separate. Refund amount is allocated merchandise plus allocated historical tax, plus explicit shipping or adjustment. No current ProductVariant, Promotion, TaxRule, shipping configuration or FX rate participates.
+
+New orders persist per-line tax from the existing cart evaluation. Older orders with null item tax use remaining Order.tax_total after known snapshots, apportioned by historical net merchandise in ascending item ID order; the last line receives the remainder. This compatibility policy cannot reconstruct historical per-class rates that were never stored. Existing historical orders are not rewritten.
+
+For a partial quantity, each remaining component uses floor(remaining component × requested quantity / remaining quantity); the last refundable quantity receives the exact remainder. BigInteger multiplication prevents intermediate integer overflow without floats. Discount, tax, net merchandise and seller basis reconcile independently. Shipping defaults to zero; an explicit admin amount is capped at remaining historical seller shipping. Marketplace adjustment has zero seller basis and still consumes order/funding capacity.
+
+### Funding and capacities
+
+Funding must reconcile: original Gift Card applied + original wallet applied + Payment.amount (external remainder) = Order.grand_total. Actual order-linked debit transactions verify internal source snapshots. Allocation priority is Gift Card, then wallet, then external payment, deducting previous credits and outstanding reservations. Item quantity/value, inspected ReturnItem quantity, seller shipping, total order and each original funding source are capped. Failed/cancelled reservations release capacity only before financial effects have posted.
+
+Gift Card refunds are immutable credits through GiftCardService, including refunds to disabled/expired original cards; refunding never makes those cards usable. Wallet reversals use WalletService and the original customer's original-currency wallet. Neither source is converted or substituted. Destination instructions have unique idempotency keys and cannot change their financial identity or be deleted through models. Request keys have a stored instruction hash; reused keys with different instructions fail.
+
+### External boundary and state
+
+PendingExternalRefundGateway implements ExternalRefundGateway and returns pending_provider only. No external refund is marked successful without a verified provider. Existing legacy provider/webhook flows remain for historical legacy refunds, but cannot mark a new orchestrated refund successful while a destination is pending. No new payment gateway or notification implementation is included.
+
+A fully restored internal refund is succeeded (the existing completion enum). Any external destination makes the refund partially_processed, with processed_at left null. Payment/PaymentAttempt external states remain unchanged. Pure internal payment status becomes partially_refunded/refunded as appropriate. economics_posted_at records the separate recognition of the approved seller liability. Late failure callbacks cannot release capacity after those effects are posted.
+
+### Commission, ledger and payout treatment
+
+Existing PostVendorRefundDebit posts one seller-attributed negative entry per commerce allocation; original sale records remain unchanged. Existing ApplyRefundCommissionAdjustment uses the original commission rate/basis and cumulative rounding, capped at the original commission, with one adjustment per allocation. Commission credits use the existing ledger action. The seller liability is recognized when refund processing is approved, including external-provider-pending refunds, so future payout eligibility reflects the obligation immediately.
+
+Original commissions and paid payout records are not rewritten. Signed vendor ledger balances can become negative after a paid payout; requestable payout capacity may remain zero but the accounting liability is retained. Vendor A allocations never debit Vendor B. Recognition after an already-posted refund uses the existing pre-recognition net-basis behavior. The refund debit records the commission identity under seller-order/commission locks; reconciliation skips reversals already absorbed before recognition, including same-second operations.
+
+### Returns, UI and authorization
+
+RefundService never changes inventory. ReturnWorkflowService.completeRefund completes a refund_pending return only when all inspected refundable quantities have completed linked refunds and no linked financial refund remains pending. Existing inspection/restocking and history architecture remains authoritative.
+
+Admin routes require auth and admin role. Services enforce admin role again. Admin can create manual item/shipping/adjustment refunds, review inspected returns, inspect funding destinations, seller debit/commission credit, and retry reserved pending refunds. Customers see safe merchandise/tax/shipping/adjustment and funding status in their own order/return views. Vendors see only their own seller effects. Gift Card codes and unrelated vendor funding details are never exposed.
+
+### Demo and verification boundary
+
+RefundWorkflowSeeder adds named DEMO-REFUND pending, internal, partial and split financial examples to an established demo catalog. Gift Card and wallet funding/restoration use their services; the split example has an explicitly seeded original demo cash receipt and a pending external refund. It never invents external refund success. Existing exhausted return examples are reported and preserved. General seeding preserves existing order and inventory history; repeated runs skip stable identifiers.
+
+Feature tests use SQLite in memory and cover historical calculations, rounding, caps, source restoration, retries, rollback, authorization, currency, vendor isolation, return completion, payout immutability and negative seller liability. The application uses MySQL. Transaction/row-lock code is implemented for MySQL; the SQLite suite does not establish simultaneous MySQL race behavior. External provider execution remains an explicit future integration. Prompt 50D owns dispute operations; Prompt 51 owns transactional notifications.
+
+## Dispute Operations and Final Returns / Refunds Integration (Prompt 50D)
+
+### Domain and eligibility
+
+Existing Dispute and DisputeMessage models are extended rather than replaced. Disputes reference the original order, one vendor order, optional return/refund, assigned admin and immutable final decision metadata. Eight controlled reasons describe non-delivery, condition, description, wrong item, seller disagreement, refund amount, return rejection and other concerns. DisputeEligibilityService verifies customer ownership and consistent seller/return/refund references. Single-seller legacy create requests infer the seller; multi-seller requests require selection. A unique active key prevents duplicate active disputes with the same order, seller, reason and related records. Legacy unscoped records remain readable to their customer/admin, with financial decisions blocked until a valid seller scope exists.
+
+### Workflow
+
+DisputeWorkflowService owns open, message, assignment, transition and resolution operations. Explicit transitions are open -> under_review; under_review -> awaiting_customer / awaiting_vendor; either awaiting state -> under_review; under_review -> resolved via a decision; resolved -> closed. The awaited participant's reply returns the case to review. Resolved/closed records reject messages and assignment changes. Identical decision retries are no-ops; conflicting decisions fail.
+
+Messages and history reject model updates/deletes. History records actor, role, state change, decision and time. All conversation and decision notes are participant-visible; no hidden admin notes are mixed into this feed. Private image evidence is attached to a message, limited to five JPEG/PNG/WebP images of at most 5 MB each, validated by extension and MIME. Generated local paths are served only through policy-protected routes with no-store/nosniff headers. Failed transactions clean up newly stored files.
+
+### Financial integration
+
+Customer-favored full/partial resolutions call RefundService with a dispute-specific idempotency key. Item IDs must belong to the dispute's seller; historical order currency, pricing, tax, purchased quantities, inspected return quantities and funding caps remain authoritative. Return approval/rejection decisions call ReturnWorkflowService and append history, preserving earlier seller decisions. Additional refunds create new records; completed refunds and historical payouts are not rewritten.
+
+Dispute code does not credit wallets/gift cards, reverse commissions, change vendor ledgers, or restore inventory. These effects remain in existing refund and return services. Order/dispute locks serialize decisions; downstream errors roll back the decision and internal financial effects. External refunds remain pending provider. A resolved operational dispute is not evidence that external money has been returned. The UI exposes this distinction. DisputeActivity events are emitted after commit for future notification integration, with no new delivery implementation.
+
+### Roles and presentation
+
+Customer routes provide order-linked creation, list, detail, reply and evidence. Approved vendors see only disputes for their vendor orders and seller-specific amounts. Admins have filters, assignment, review/wait actions and explicit resolution forms. Shared Blade views use the existing account/admin/vendor layouts; messages are paginated in batches of 20. Forms work without JavaScript. No other seller items, gift card secrets or wallet balances are rendered to vendors.
+
+### Demo and verification
+
+DisputeWorkflowSeeder creates seven stable scenarios using the existing refund demo: open, review, awaiting customer, awaiting vendor, vendor-favored, customer partial-refund and closed. Repeated seeds preserve records and financial entries. SQLite feature tests exercise journeys A-H, permissions, evidence, immutability, rollback and retries. A read-only two-connection MySQL probe verified row-lock contention and release without modifying the demo row. Simultaneous financial-resolution stress is only partially verified. See docs/prompt-50-final-report.md for exact final results and all 75 acceptance items. Prompt 51 remains outside this implementation.
+
+## Transactional Notifications (Prompt 51)
+
+### Existing foundation and event boundary
+
+The original Laravel notifications table, notification_dispatches ledger, Notifiable User, notification subclasses, role inboxes, read operations and bells are retained. MarketplaceNotifier is now a compatibility event publisher: existing Actions call the same methods, which emit CommerceNotificationRequested after commit. CommerceNotificationListener resolves recipients and invokes SendUniqueNotification. ReturnStatusChanged and DisputeActivity are reused with history/message version identifiers; LifecycleNotificationListener handles them and the new FinancialNotificationRequested event. Financial services contain no SMTP/provider implementation.
+
+### Event mapping
+
+| Event / operation | Listener | Notification class(es) | Recipients | Eligible channels |
+|---|---|---|---|---|
+| CommerceNotificationRequested: orderPlaced/newVendorOrder | CommerceNotificationListener | OrderPlacedNotification, VendorOrderCreatedNotification | Customer; correct seller owner | database, mail |
+| paymentChanged/paymentRequiresReview | CommerceNotificationListener | PaymentSucceededNotification, PaymentFailedNotification, PaymentRequiresReviewNotification | Customer; admin for review | database; mail for customer |
+| vendorOrderStatusChanged/orderCancelled | CommerceNotificationListener | VendorOrderShippedNotification, VendorOrderDeliveredNotification, OrderCancelledNotification, VendorOrderCancelledNotification | Customer; affected seller | database; mail for customer |
+| vendorApplicationSubmitted/vendorStatusChanged | CommerceNotificationListener | VendorApplicationSubmittedNotification, VendorApprovedNotification, VendorRejectedNotification, VendorSuspendedNotification, VendorReactivatedNotification | Admin; owning vendor | database; mail for vendor |
+| productSubmitted/productStatusChanged | CommerceNotificationListener | ProductSubmittedNotification, ProductApprovedNotification, ProductRejectedNotification | Admin; owning vendor | database |
+| payoutRequested/payoutStatusChanged | CommerceNotificationListener | PayoutRequestedNotification, PayoutApprovedNotification, PayoutProcessingNotification, PayoutPaidNotification, PayoutRejectedNotification | Admin for request; owning vendor | database; mail for paid/rejected |
+| refundChanged | CommerceNotificationListener | RefundSucceededNotification, RefundFailedNotification, VendorRefundNotification | Customer; affected sellers only on authoritative success | database; mail for customer |
+| ReturnStatusChanged | LifecycleNotificationListener.returning | ReturnRequestedNotification, ReturnApprovedNotification, ReturnRejectedNotification, ReturnReceivedNotification, ReturnInspectedNotification, ReturnCancelledNotification, ReturnRefundPendingNotification | Customer; seller for requested/cancelled; admin for refund review | database, mail |
+| DisputeActivity | LifecycleNotificationListener.dispute | DisputeOpenedNotification, DisputeMessageNotification, DisputeResponseRequiredNotification, DisputeResolvedNotification, DisputeClosedNotification | Participants; assigned/all admins for opened/messages; only awaited role for response requests | database, mail |
+| FinancialNotificationRequested: refund | LifecycleNotificationListener.financial | RefundProcessingNotification, RefundExternalPendingNotification; existing success notification; RefundImpactNotification | Customer; admin for pending provider; scoped seller impact | database, mail |
+| FinancialNotificationRequested: wallet/gift_card | LifecycleNotificationListener.financial | WalletCreditNotification, WalletDebitNotification, GiftCardIssuedNotification | Associated customer only | database, mail |
+| FinancialNotificationRequested: financial_failure | LifecycleNotificationListener.financial | SystemFinancialFailureNotification | Admin | database, mail |
+
+Existing review moderation notifications also remain supported through CommerceNotificationRequested. There is no bulk moderation API to summarize; no digest engine was added. A vendor new-order notification waits for the existing CanFulfillVendorOrder eligibility (COD or confirmed online/internal payment). Payment confirmation retries that seller notification with the same logical key.
+
+### Delivery, recovery and idempotency
+
+SendUniqueNotification defers until commit, writes a unique recipient/source dispatch with a minimal replay snapshot, then invokes native queued Laravel notifications. Database and mail use Laravel channel subclasses with dispatch-row locks and separate database_sent_at/mail_sent_at receipts. Replaying a delivery skips completed channels. Mail jobs have five attempts and increasing backoff. The queue connection is configuration-driven.
+
+Dispatch enqueue failures retain status=failed and safe exception class metadata. notifications:retry requeues pending/failed records; the scheduler runs it once per minute without overlap. Native failed jobs remain inspectable/retryable through Laravel. Legacy dispatches have status=legacy and no replay snapshot; they are preserved, not resent. A queued status means handed to Laravel, not necessarily delivered; channel receipts are authoritative. Failed listener preparation is logged safely for investigation.
+
+SMTP has an unavoidable acknowledgement gap: if the provider accepts mail and the process crashes before recording its receipt, a retry may deliver again. Exactly-once external delivery requires provider idempotency support. Local channel replay/concurrent row-lock protection does not make that guarantee. Commerce is already committed before dispatch; mail exceptions cannot reverse its business state.
+
+### Preferences, locale and security
+
+notification_preferences stores one row per user/category, with in-app/email booleans. Account, vendor, order, payment, return, refund, dispute, wallet, gift_card and payout categories are required transactional. Product, fulfillment and system updates are optional. Financial-failure notices use the required account policy. Required channel settings are enforced server-side; existing database-only event mappings remain database-only. No marketing subscriptions or unsupported channel switches are introduced.
+
+All three roles have GET/PUT notifications/preferences routes. users.notification_locale accepts en/ur/ar, set explicitly in preferences; otherwise app.locale is used. It is not inferred from currency or country. Laravel locale-aware notification rendering, translated core titles/chrome, and HTML email dir=rtl support Urdu/Arabic; unprovided long-form translations fall back to English. Financial text retains the entity currency snapshot.
+
+Payloads contain controlled category/severity, title/message, internal named-route action URL/label and source key, never complete models, wallet balances, gift-card codes/hashes, private notes or cross-seller commerce. Message authors are excluded from their own dispute reply alerts. Return rejection explanations come only from the existing participant-visible history. Inbox and read queries stay scoped to the authenticated user; following an action still invokes destination authorization. Bells use a count and at most five rows, without per-notification relation queries.
+
+### Mail and production operation
+
+The responsive HTML/plain-text transactional templates use SettingsService marketplace name/support address with application fallback. There is no configurable logo in the current settings registry, so mail uses text branding. Named routes/configured APP_URL supply links. Configure a production MAIL_MAILER, sender and verified provider credentials, HTTPS APP_URL, a supervised queue worker, the scheduler, failed-job monitoring and alerts for failed dispatches before launch. Keep worker timeout below queue retry_after and configure finite transport timeouts. Local verification uses the database queue and log mailer; real SMTP delivery is not claimed.
+
+SMS, WhatsApp and mobile push are not integrated. Laravel channels remain the extension point. No notification history is pruned. See docs/prompt-51-report.md for verification and acceptance results.
+
+## Invoice & Order Documents (Prompt 52)
+
+### Audit and boundary
+
+No existing invoice table, document service, PDF dependency or download route existed. Reused Order, VendorOrder and OrderItem snapshots; authoritative Payment status; Refund/RefundAllocation/RefundFundingAllocation; customer/vendor/admin roles; SettingsService; notification locale preferences; and existing order/refund screens. No commerce operation or financial posting is performed by document generation.
+
+### Architecture
+
+`Authenticated named route -> CommerceDocumentPolicy -> DocumentService -> CommerceDocument + DocumentSnapshot -> DocumentRenderer -> Blade print HTML / mPDF PDF`.
+
+Controlled types are `order_invoice`, `order_summary`, `vendor_order`, `credit_note`. The additive `commerce_documents` table stores source foreign keys, unique logical identity, unique immutable number, historical currency and precision, stable locale, issuer/recipient snapshots, issue timestamp and minimal displayed content. It does not serialize whole Eloquent models or secrets. Order/item fields are historical snapshots but are not model-enforced immutable in this project; therefore displayed line values and status are frozen once at document issuance as well. Subsequent rendering only reads the document payload.
+
+### Numbering, issuance and concurrency
+
+Issuance is lazy on the first authorized request (or demo seed). Rendering is separate. A transaction locks the source Order with `FOR UPDATE`, checks the unique logical key `type:source-id`, and returns an existing document unchanged or inserts one. Numbers are `INV|ORD|SEL|CRN-issue-year-source-id-padded-to-8`; no MAX+1 calculation or random numbering. Unique constraints on logical key and number back the order lock; transaction deadlocks are retried up to three times. Credit-note creation reuses/creates the original invoice within the transaction. The same refund cannot create a second credit note; distinct refunds retain separate identities.
+
+Documents have no edit/delete endpoint. Model update/delete hooks and the document Eloquent builder reject mutation. As with other application integrity policies, privileged raw database access is outside that guard. Foreign keys restrict source deletion. No voiding workflow or settlement statement is introduced.
+
+### Historical values and seller isolation
+
+Customer lines use OrderItem product name, variant text, SKU, quantity, unit_price, line_total, discount_total, tax_total and canonical customerLineTotal(). Totals reproduce stored Order subtotal, discount, shipping, tax and grand_total. No ProductVariant price, TaxRule, Promotion, shipping rate or FX quote is fetched. Multi-vendor invoices group by actual VendorOrder. Seller documents include only the selected VendorOrder, its own items and recorded total; no customer wallet/gift-card funding or another vendor's lines appear.
+
+Legacy seller totals can exclude customer item tax: PlaceOrder historically stored seller grand_total without that tax. Seller documents preserve those values and explicitly distinguish recorded seller totals from item tax shown for reference. They are operational records, not payout/commission statements. Wallet and gift-card application are separate tender allocations, never additional discounts; remaining external funding is not represented as proof of collection. Payment status is the authoritative Payment state at issuance.
+
+### Refunds
+
+Completed refunds receive credit notes linked to the original invoice/order and refund number, using actual allocation quantities, net merchandise, included discounts, tax, shipping, adjustments and total. No refund is recomputed or rewritten. Safe funding destination labels/amounts/statuses are included when recorded. Codes, balances, payment credentials, commissions and internal notes are excluded.
+
+An economically recognized `partially_processed` refund receives an on-demand, non-persisted processing statement explicitly saying provider funds have not yet been returned. It has a `STAT-refund-reference` identifier, is labelled a statement rather than a completed credit note, and may reflect later processing progress. Pending/unapproved refunds cannot create credit notes. Refund currency must match the original invoice; mismatches fail rather than silently converting.
+
+### Issuer and recipient
+
+Default: marketplace-issued commercial records, configurable through `config/documents.php` / `DOCUMENT_ISSUER`. `vendor` mode permits single-vendor customer invoices; aggregate multi-vendor customer invoices require marketplace mode. Seller documents are vendor-issued. Credit notes retain their original invoice issuer even if current configuration changes.
+
+`DOCUMENT_LEGAL_NAME`, `DOCUMENT_BUSINESS_ADDRESS`, `DOCUMENT_TAX_NUMBER` are optional verified client inputs. Marketplace name, support email/address come from existing SettingsService, website from APP_URL. Vendor documents snapshot the vendor's recorded business name/address/tax number/website. Missing optional fields are hidden; text branding works without a logo. No arbitrary/remote images or HTML are accepted. The client must confirm the issuer model, business details and jurisdiction-specific tax requirements; no statutory compliance is asserted.
+
+Recipient identity/address use Order shipping snapshots, not the customer's current profile/address book. Legacy seller/issuer identity was not snapshotted at checkout; it is frozen at first issuance, not reconstructed for the earlier order date.
+
+### Currency, localization and rendering
+
+Money::formatWithPrecision uses integer arithmetic and the document's stored ISO currency/minor-unit precision. Metadata is resolved at issuance from Currency, with the existing configured base-currency precision as the only fallback. Unknown unconfigured currencies fail explicitly. No exchange-rate conversion occurs. Existing commerce Money::format behavior is unchanged.
+
+Locale precedence: original invoice for credit notes; otherwise recipient's notification locale (seller recipient for seller document), then active marketplace default Language, then documents.fallback_locale captured from APP_LOCALE. Browser/session language cannot select the formal document locale. Once stored it remains stable. Laravel translation keys support en/ar/ur with English fallback for untranslated detailed text. Renderer restores the prior application locale in a finally block. mPDF auto-script/font selection and RTL direction support Arabic/Urdu text and mixed numeric tables.
+
+mPDF 8.2.7 renders server-side A4 PDFs from escaped Blade. PDFs are generated on demand and returned as private, no-store attachments with sanitized filenames and nosniff. No public PDF storage or public token link exists. Renderer cache is private at storage/app/private/document-renderer and must be writable by the PHP worker. It contains font metadata, not public customer PDFs. Diagnostic samples stay under private document-qa. Print HTML uses the same snapshot/template and restrictive CSP; native browser printing works without JavaScript. Tables repeat headers across pages and include page-number footers.
+
+### UI and notifications
+
+Customer order detail has Download invoice and Print summary; eligible refund entries have Refund document. Vendor order detail has Download seller document. Admin order/refund details expose the corresponding documents and seller-specific links. All eight routes use auth plus their exact role and centralized ownership checks before issuance. The existing notification order/refund destinations lead to these screens; no duplicate notification event or mail attachment is introduced.
+
+### Demo and operations
+
+CommerceDocumentSeeder issues records only from existing customer@example.com demo commerce, including bounded standard, multi-vendor and completed-refund samples. It does not manufacture financial history, and repeated seeding reuses logical identities. Maintain composer-installed mPDF and its font dependencies; production PHP requires gd/mbstring and a writable private rendering cache. Back up commerce_documents alongside the historical commerce tables. See docs/prompt-52-report.md for exact verification results, limitations, routes and the 75-item acceptance checklist.

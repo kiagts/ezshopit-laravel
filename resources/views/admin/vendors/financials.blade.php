@@ -7,6 +7,7 @@
 @section('title', $vendor->display_name.' Financials')
 
 @section('content')
+    <a class="mb-6 inline-flex min-h-11 items-center rounded border px-4" href="{{ route('admin.finance.index', ['vendor' => $vendor, 'currency' => $filters['currency']]) }}">Seller finance, statements and reconciliation</a>
     <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <a href="{{ route('admin.vendors.show', $vendor) }}" class="text-sm font-medium text-brand-700 hover:text-brand-900">Back to vendor</a>
@@ -79,3 +80,4 @@
         </div>
     </section>
 @endsection
+

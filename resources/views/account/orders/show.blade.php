@@ -1,29 +1,25 @@
-@extends('layouts.app')
-
-@php
-    use App\Support\Countries;
-    use App\Support\Money;
-@endphp
+@extends('account.layout')
 
 @section('title', $order->order_number)
+@section('account_active', 'orders')
+@section('account_badge')
+    {{ $order->status->label() }}
+@endsection
+@section('account_title', $order->order_number)
+@section('account_description')
+    Placed {{ $order->placed_at?->format('M j, Y g:i A') }}
+@endsection
 
-@section('content')
-    <x-container class="py-10 sm:py-14">
-        <div class="grid gap-8 lg:grid-cols-[18rem_1fr]">
-            <x-account.nav active="orders" />
+@section('account_actions')
+    <x-button :href="route('account.documents.invoice', $order)" variant="secondary">{{ __('documents.download') }}</x-button>
+    <x-button :href="route('account.documents.print', $order)" variant="secondary">{{ __('documents.print') }}</x-button>
+    <x-button :href="route('account.orders.index')" variant="secondary">All Orders</x-button>
+@endsection
 
-            <section>
-                <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <x-badge :tone="$order->status->badgeTone()">{{ $order->status->label() }}</x-badge>
-                        <h1 class="mt-4 text-3xl font-semibold tracking-normal text-neutral-950">{{ $order->order_number }}</h1>
-                        <p class="mt-2 text-sm leading-6 text-neutral-600">Placed {{ $order->placed_at?->format('M j, Y g:i A') }}</p>
-                    </div>
-                    <x-button :href="route('account.orders.index')" variant="secondary">All Orders</x-button>
-                </div>
-
-                @include('account.orders._details', ['order' => $order])
-            </section>
-        </div>
-    </x-container>
+@section('account_content')
+    <div class="mb-4"><x-button :href="route('account.orders.dispute.create', $order)" variant="secondary">Open a dispute</x-button></div>
+    @if($hasReturnableItems)
+    <div class="mb-5"><x-button :href="route('account.orders.returns.create', $order)" variant="secondary">Return an item</x-button></div>
+    @endif
+    @include('account.orders._details', ['order' => $order])
 @endsection

@@ -6,10 +6,13 @@ use App\Enums\ProductApprovalStatus;
 use App\Enums\ProductStatus;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Notifications\MarketplaceNotifier;
 use Illuminate\Validation\ValidationException;
 
 class RejectProduct
 {
+    public function __construct(private readonly MarketplaceNotifier $notifier) {}
+
     public function handle(Product $product, User $admin, string $reason): Product
     {
         if ($product->approval_status !== ProductApprovalStatus::Pending) {
@@ -25,6 +28,8 @@ class RejectProduct
             'approved_at' => null,
             'approved_by' => null,
         ])->save();
+
+        $this->notifier->productStatusChanged($product, 'rejected');
 
         return $product;
     }

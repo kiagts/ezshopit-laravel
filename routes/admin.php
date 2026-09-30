@@ -6,10 +6,12 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\CommissionRuleController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\HomepageSectionController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PayoutController;
+use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\ProductAttributeController;
@@ -19,14 +21,54 @@ use App\Http\Controllers\Admin\Products\ProductController as AdminProductControl
 use App\Http\Controllers\Admin\ShippingMethodController;
 use App\Http\Controllers\Admin\VendorController;
 use App\Http\Controllers\Admin\VendorFinancialController;
+use App\Http\Controllers\Admin\CmsPageController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\NavigationController;
+use App\Http\Controllers\Admin\MarketController;
 use App\Http\Controllers\Admin\VendorLedgerController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth', 'role:'.UserRole::Admin->value])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {
+        Route::get('/wallets', [\App\Http\Controllers\Admin\WalletController::class, 'index'])->name('wallets.index');
+        Route::get('/gift-cards', [\App\Http\Controllers\Admin\GiftCardController::class, 'index'])->name('gift-cards.index');
+        Route::post('/gift-cards', [\App\Http\Controllers\Admin\GiftCardController::class, 'issue'])->name('gift-cards.issue');
+        Route::get('/wallets/customers/{customer}', [\App\Http\Controllers\Admin\WalletController::class, 'show'])->name('wallets.show');
+        Route::post('/wallets/customers/{customer}/transactions', [\App\Http\Controllers\Admin\WalletController::class, 'transact'])->name('wallets.transact');
+        Route::put('/wallets/{wallet}/status', [\App\Http\Controllers\Admin\WalletController::class, 'status'])->name('wallets.status');
         Route::get('/', DashboardController::class)->name('dashboard');
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::put('/settings/{group}', [SettingsController::class, 'update'])->name('settings.update');
+        Route::get('/navigation', [NavigationController::class, 'index'])->name('navigation.index');
+        Route::resource('markets', MarketController::class)->only(['index','store','update']);
+        Route::get('/navigation/{menu}/edit', [NavigationController::class, 'edit'])->name('navigation.edit');
+        Route::post('/navigation/{menu}/items', [NavigationController::class, 'store'])->name('navigation.items.store');
+        Route::put('/navigation/{menu}/items/{item}', [NavigationController::class, 'update'])->name('navigation.items.update');
+        Route::delete('/navigation/{menu}/items/{item}', [NavigationController::class, 'destroy'])->name('navigation.items.destroy');
+        Route::post('/navigation/{menu}/reorder', [NavigationController::class, 'reorder'])->name('navigation.reorder');
+        Route::get('/pages', [CmsPageController::class, 'index'])->name('pages.index');
+        Route::get('/pages/create', [CmsPageController::class, 'create'])->name('pages.create');
+        Route::post('/pages', [CmsPageController::class, 'store'])->name('pages.store');
+        Route::get('/pages/{page}/edit', [CmsPageController::class, 'edit'])->name('pages.edit');
+        Route::put('/pages/{page}', [CmsPageController::class, 'update'])->name('pages.update');
+        Route::post('/pages/{page}/publish', [CmsPageController::class, 'publish'])->name('pages.publish');
+        Route::post('/pages/{page}/unpublish', [CmsPageController::class, 'unpublish'])->name('pages.unpublish');
+        Route::get('/pages/{page}/preview', [CmsPageController::class, 'preview'])->name('pages.preview');
+        Route::get('/homepage', [HomepageSectionController::class, 'index'])->name('homepage.index');
+        Route::get('/homepage/preview', [HomepageSectionController::class, 'preview'])->name('homepage.preview');
+        Route::get('/homepage/sections/create', [HomepageSectionController::class, 'create'])->name('homepage.sections.create');
+        Route::post('/homepage/sections', [HomepageSectionController::class, 'store'])->name('homepage.sections.store');
+        Route::post('/homepage/sections/reorder', [HomepageSectionController::class, 'reorder'])->name('homepage.sections.reorder');
+        Route::get('/homepage/sections/{section}/edit', [HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
+        Route::put('/homepage/sections/{section}', [HomepageSectionController::class, 'update'])->name('homepage.sections.update');
+        Route::post('/homepage/sections/{section}/toggle', [HomepageSectionController::class, 'toggle'])->name('homepage.sections.toggle');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+        Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order:order_number}', [OrderController::class, 'show'])->name('orders.show');
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
@@ -41,6 +83,7 @@ Route::middleware(['web', 'auth', 'role:'.UserRole::Admin->value])
         Route::post('/payouts/{payout:payout_number}/processing', [PayoutController::class, 'processing'])->name('payouts.processing');
         Route::post('/payouts/{payout:payout_number}/paid', [PayoutController::class, 'paid'])->name('payouts.paid');
         Route::post('/payouts/{payout:payout_number}/cancel', [PayoutController::class, 'cancel'])->name('payouts.cancel');
+        Route::resource('promotions', PromotionController::class)->except('show', 'destroy');
         Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
         Route::get('/reviews/{review}', [ReviewController::class, 'show'])->name('reviews.show');
         Route::post('/reviews/{review}/approve', [ReviewController::class, 'approve'])->name('reviews.approve');

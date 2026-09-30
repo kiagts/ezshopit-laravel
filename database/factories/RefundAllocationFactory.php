@@ -22,6 +22,7 @@ class RefundAllocationFactory extends Factory
             'order_item_id' => null,
             'type' => RefundAllocationType::Adjustment,
             'amount' => fake()->numberBetween(100, 1000),
+            'seller_amount' => null,
             'quantity' => null,
         ];
     }
